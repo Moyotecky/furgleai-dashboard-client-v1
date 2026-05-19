@@ -127,9 +127,9 @@ const REPO_RISK_RANKING = [
 ];
 
 const SECRETS_EXPOSURE = [
-  { type: 'Stripe API Key', location: 'auth-service (commit 4f9a3b)', status: 'Active Leaked Key', severity: 'critical' },
-  { type: 'AWS Secret Access Key', location: 'payments-api (.env exposed)', status: 'Unencrypted Env', severity: 'critical' },
-  { type: 'JWT Private Secret', location: 'user-service (hardcoded)', status: 'Hardcoded', severity: 'high' },
+  { type: 'Stripe API Key', location: 'auth-service (commit 4f9a3b)', status: 'Active Leaked Key', severity: 'critical', slug: 'stripe' },
+  { type: 'AWS Secret Access Key', location: 'payments-api (.env exposed)', status: 'Unencrypted Env', severity: 'critical', slug: 'amazonwebservices' },
+  { type: 'JWT Private Secret', location: 'user-service (hardcoded)', status: 'Hardcoded', severity: 'high', slug: 'jsonwebtokens' },
 ];
 
 const PR_SECURITY_REVIEWS = [
@@ -194,7 +194,7 @@ const TEAM_ACTIVITY = [
 
 export function OverviewView() {
   return (
-    <div className="flex flex-col min-h-screen pb-20 w-full font-sans tracking-tight">
+    <div className="flex flex-col min-h-screen pb-20 w-full font-sans bg-zinc-50 tracking-tight">
 
       {/* Top Bar */}
       <div className="h-[52px] px-8 border-b border-zinc-200 flex items-center justify-between sticky top-0 bg-white z-40 transition-colors hover:bg-zinc-50/50">
@@ -215,7 +215,7 @@ export function OverviewView() {
 
         {/* Welcome Back & Hero Header */}
         <div className="flex flex-col gap-2">
-          <p className="tracking-tight text-[15px] text-zinc-600">Welcome back, <span className="text-zinc-900 text-[24px] font-bold tracking-tighter hover:text-blue-600 cursor-pointer transition-colors">Moyosoluwalorun</span></p>
+          <p className="tracking-tight text-[15px] text-zinc-600">Welcome back, <span className="text-zinc-900 text-[24px] font-bold tracking-tighter hover:text-blue-600 cursor-pointer transition-colors">Moyosoluwalorun.</span></p>
 
           <h1 className="text-[32px] md:text-[40px] font-bold text-zinc-900 font-sans leading-tight tracking-tighter mt-1">
             Your team has 12 <br className="hidden md:block" />active vulnerabilities
@@ -225,57 +225,59 @@ export function OverviewView() {
           </p>
         </div>
 
-
-        {/* 9. Scan Throughput & Platform Health (Key Metrics layout) */}
-        <div className="flex flex-wrap gap-x-12 gap-y-6 border-y border-zinc-100 py-5 w-full">
-          <div className="flex flex-col gap-1 cursor-pointer group active:scale-[0.97] transition-transform hover:bg-zinc-50 p-2 -m-2 rounded-lg">
-            <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-tight group-hover:text-zinc-600 transition-colors">Scans Today</span>
-            <span className="text-[22px] font-bold text-zinc-900 tracking-tighter group-hover:text-blue-600 transition-colors">1,248</span>
+        {/* 9. Scan Throughput & Platform Health (Linear-Style Divider Grid) */}
+        <div className="grid grid-cols-2 md:grid-cols-5 border border-zinc-200/80 rounded-[6px] divide-x divide-zinc-200/80 bg-white select-none">
+          <div className="flex flex-col p-4 gap-0.5 hover:bg-zinc-50/50 transition-colors cursor-pointer group active:scale-[0.98]">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider group-hover:text-zinc-600 transition-colors">Scans Today</span>
+            <span className="text-[18px] font-bold text-zinc-900 tracking-tight font-sans">1,248</span>
           </div>
-          <div className="flex flex-col gap-1 cursor-pointer group active:scale-[0.97] transition-transform hover:bg-zinc-50 p-2 -m-2 rounded-lg">
-            <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-tight group-hover:text-zinc-600 transition-colors">Avg Scan Time</span>
-            <span className="text-[22px] font-bold text-zinc-900 tracking-tighter group-hover:text-blue-600 transition-colors">2.4s</span>
+          <div className="flex flex-col p-4 gap-0.5 hover:bg-zinc-50/50 transition-colors cursor-pointer group active:scale-[0.98]">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider group-hover:text-zinc-600 transition-colors">Avg Scan Time</span>
+            <span className="text-[18px] font-bold text-zinc-900 tracking-tight font-sans">2.4s</span>
           </div>
-          <div className="flex flex-col gap-1 cursor-pointer group active:scale-[0.97] transition-transform hover:bg-zinc-50 p-2 -m-2 rounded-lg">
-            <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-tight group-hover:text-zinc-600 transition-colors">Queue Depth</span>
-            <span className="text-[22px] font-bold text-zinc-900 tracking-tighter group-hover:text-blue-600 transition-colors">0</span>
+          <div className="flex flex-col p-4 gap-0.5 hover:bg-zinc-50/50 transition-colors cursor-pointer group active:scale-[0.98]">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider group-hover:text-zinc-600 transition-colors">Queue Depth</span>
+            <span className="text-[18px] font-bold text-zinc-900 tracking-tight font-sans">0</span>
           </div>
-          <div className="flex flex-col gap-1 cursor-pointer group active:scale-[0.97] transition-transform hover:bg-zinc-50 p-2 -m-2 rounded-lg">
-            <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-tight group-hover:text-zinc-600 transition-colors">AI Latency</span>
-            <span className="text-[22px] font-bold text-zinc-900 tracking-tighter group-hover:text-blue-600 transition-colors">120ms</span>
+          <div className="flex flex-col p-4 gap-0.5 hover:bg-zinc-50/50 transition-colors cursor-pointer group active:scale-[0.98]">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider group-hover:text-zinc-600 transition-colors">AI Latency</span>
+            <span className="text-[18px] font-bold text-zinc-900 tracking-tight font-sans">120ms</span>
           </div>
-          <div className="flex flex-col gap-1 cursor-pointer group active:scale-[0.97] transition-transform hover:bg-zinc-50 p-2 -m-2 rounded-lg">
-            <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-tight group-hover:text-zinc-600 transition-colors">Success Rate</span>
-            <span className="text-[22px] font-bold text-emerald-600 tracking-tighter group-hover:text-emerald-700 transition-colors">99.9%</span>
+          <div className="flex flex-col p-4 gap-0.5 hover:bg-zinc-50/50 transition-colors cursor-pointer group active:scale-[0.98]">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider group-hover:text-zinc-600 transition-colors">Success Rate</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[18px] font-bold text-emerald-600 tracking-tight font-sans">99.9%</span>
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            </div>
           </div>
         </div>
 
-        {/* 1. Security Posture Score (MOST IMPORTANT) */}
-        <div className="border border-zinc-200 rounded-[12px] bg-white p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6 hover:shadow-md transition-shadow active:scale-[0.99] cursor-pointer group/hero">
-          <div className="flex flex-col gap-2">
-            <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Security Posture Score</span>
-            <div className="flex items-baseline gap-3">
-              <span className="text-[56px] font-extrabold text-zinc-900 tracking-tighter leading-none group-hover/hero:text-blue-600 transition-colors">82</span>
-              <span className="text-[20px] font-bold text-zinc-400 group-hover/hero:text-zinc-500 transition-colors">/100</span>
-              <span className="text-[24px] font-black text-emerald-500 tracking-tighter ml-3">Grade B+</span>
+        {/* 1. Security Posture Score (Flat Premium Telemetry Panel) */}
+        <div className="border border-zinc-200/80 rounded-[6px] bg-white p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 hover:bg-zinc-50/30 transition-colors cursor-pointer group active:scale-[0.995]">
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Security Posture Score</span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-[44px] font-extrabold text-zinc-950 tracking-tighter leading-none group-hover:text-black transition-colors">82</span>
+              <span className="text-[13px] text-zinc-400 font-medium">/100</span>
+              <span className="text-[12px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100/50 rounded px-1.5 py-0.5 ml-2 font-mono">B+</span>
             </div>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-[13px] font-medium text-emerald-600">↑ +6 this week</span>
-              <span className="text-[13px] text-zinc-300">•</span>
-              <span className="text-[13px] font-semibold text-zinc-900 bg-emerald-50 px-2 py-0.5 rounded-full">Posture Improving</span>
+            <div className="flex items-center gap-2 mt-1 text-[12px] text-zinc-500">
+              <span className="font-semibold text-emerald-600">↑ +6 this week</span>
+              <span className="text-zinc-300">•</span>
+              <span className="font-medium text-emerald-700 bg-emerald-50/50 border border-emerald-100/50 px-2 py-0.5 rounded-full text-[11px]">Posture Improving</span>
             </div>
           </div>
 
-          <div className="flex flex-col gap-1.5 border-t md:border-t-0 md:border-l border-zinc-100 pt-4 md:pt-0 md:pl-8 shrink-0">
-            <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Telemetry Engines</span>
+          <div className="flex flex-col gap-1.5 border-t md:border-t-0 md:border-l border-zinc-150 pt-4 md:pt-0 md:pl-6 shrink-0 text-[11px] text-zinc-600 w-full md:w-auto">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Telemetry Engines</span>
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                <span className="text-[12px] font-medium text-zinc-700">Risk Index: Stable</span>
+                <span className="font-medium">Risk Index: Stable</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                <span className="text-[12px] font-medium text-zinc-700">EIL Intelligence Engine: Active</span>
+                <span className="font-medium">EIL Intelligence Engine: Active</span>
               </div>
             </div>
           </div>
@@ -361,7 +363,16 @@ export function OverviewView() {
                 {SECRETS_EXPOSURE.map((secret, i) => (
                   <div key={i} className={`flex items-center justify-between p-3.5 hover:bg-zinc-50 transition-colors cursor-pointer group/row active:scale-[0.99] ${i !== SECRETS_EXPOSURE.length - 1 ? 'border-b border-zinc-100' : ''}`}>
                     <div className="flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full ${secret.severity === 'critical' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'bg-orange-500'}`} />
+                      <div className="relative w-8 h-8 rounded-[4px] border border-zinc-200/60 bg-zinc-50 flex items-center justify-center shrink-0">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={`https://cdn.jsdelivr.net/npm/simple-icons@12.0.0/icons/${secret.slug}.svg`}
+                          alt=""
+                          className="w-4.5 h-4.5 object-contain opacity-85 group-hover/row:opacity-100 transition-opacity"
+                        />
+                        <div className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full border border-white ${secret.severity === 'critical' ? 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.4)]' : 'bg-orange-500'
+                          }`} />
+                      </div>
                       <div className="flex flex-col gap-0.5">
                         <span className="text-[13px] font-medium text-zinc-900 tracking-tight group-hover/row:text-red-600 transition-colors">{secret.type}</span>
                         <span className="text-[12px] text-zinc-400 font-mono tracking-tighter">{secret.location}</span>
