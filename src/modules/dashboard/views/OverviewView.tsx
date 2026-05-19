@@ -1,6 +1,8 @@
 'use client';
 
 import React from 'react';
+import { CircleCheck, Circle, ChevronRight, ChevronDown, Maximize2, MoreVertical } from 'lucide-react';
+import { FaGithub, FaChartPie } from 'react-icons/fa';
 
 // Custom Minimal Enterprise SVGs
 const IconBranch = () => (
@@ -115,9 +117,9 @@ const ChevronCircleIcon = ({ colorClass }: { colorClass: string }) => (
 
 // Mock Data matching the new FurgleAI SOC specifications
 const ACTIVE_VULNERABILITIES = [
-  { id: 'backend-api', title: 'SQL Injection in user-service', severity: 'critical', time: '26m', userImg: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&h=64&q=80&fit=crop' },
-  { id: 'auth-service', title: 'Exposed JWT Secret', severity: 'high', time: '45m', userImg: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=64&h=64&q=80&fit=crop' },
-  { id: 'dashboard-ui', title: 'Prototype Pollution', severity: 'medium', time: '7h', userImg: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=64&h=64&q=80&fit=crop' },
+  { title: 'Ensure any change to code receives approval of at least one strongly authenticat...', lastRun: '3 day ago', assetsFailing: 1, totalAssets: 7 },
+  { title: 'Hardcoded credentials check missing in pre-commit hooks', lastRun: '1 day ago', assetsFailing: 2, totalAssets: 15 },
+  { title: 'Enforce branch protection rules on main branches', lastRun: '5 hours ago', assetsFailing: 1, totalAssets: 4 },
 ];
 
 const REPO_RISK_RANKING = [
@@ -199,6 +201,18 @@ export function OverviewView() {
   const [progress, setProgress] = React.useState(68);
   const [currentStage, setCurrentStage] = React.useState('ANALYSIS');
 
+  // Interactive Collapsible Tree State
+  const [expandedNodes, setExpandedNodes] = React.useState<Record<string, boolean>>({
+    'payments-api': true,
+    'auth-service': true,
+    'gateway-router': false,
+    'billing-worker': false,
+  });
+
+  const toggleNode = (node: string) => {
+    setExpandedNodes(prev => ({ ...prev, [node]: !prev[node] }));
+  };
+
   React.useEffect(() => {
     if (isEmpty) return;
     const interval = setInterval(() => {
@@ -232,7 +246,7 @@ export function OverviewView() {
     <div className="flex flex-col min-h-screen pb-20 w-full font-sans bg-zinc-50 tracking-tight">
 
       {/* Top Bar */}
-      <div className="h-[52px] px-8 border-b border-zinc-200 flex items-center justify-between sticky top-0 bg-white z-40 transition-colors hover:bg-zinc-50/50">
+      <div className="h-[52px] px-4 sm:px-8 border-b border-zinc-200 flex items-center justify-between sticky top-0 bg-white z-40 transition-colors hover:bg-zinc-50/50">
         <div className="flex items-center gap-3 text-[13px] font-medium text-zinc-600 tracking-tight cursor-pointer hover:text-zinc-900 transition-colors">
           <div className="w-4 h-4 bg-zinc-800 rounded-[3px] flex items-center justify-center shadow-sm">
             <div className="w-1.5 h-1.5 border-2 border-white rounded-[1px]" />
@@ -255,7 +269,7 @@ export function OverviewView() {
       </div>
 
       {/* Main Content - Full width responsive */}
-      <div className="px-8 py-10 flex flex-col gap-10 w-full">
+      <div className="px-4 sm:px-8 py-6 sm:py-10 flex flex-col gap-8 sm:gap-10 w-full">
 
         {/* Welcome Back & Hero Header */}
         <div className="flex flex-col gap-2">
@@ -382,23 +396,21 @@ export function OverviewView() {
               ) : (
                 <div className="flex flex-col">
                   {ACTIVE_VULNERABILITIES.map((vuln, i) => (
-                    <div key={i} className={`flex items-center justify-between p-3.5 hover:bg-zinc-50 transition-colors cursor-pointer group/row active:scale-[0.99] ${i !== ACTIVE_VULNERABILITIES.length - 1 ? 'border-b border-zinc-100' : ''}`}>
-                      <div className="flex items-center gap-3">
-                        <ChevronCircleIcon colorClass={
-                          vuln.severity === 'critical' ? 'border-red-500 text-red-500' :
-                            vuln.severity === 'high' ? 'border-orange-500 text-orange-500' :
-                              'border-yellow-500 text-yellow-500'
-                        } />
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-[13px] font-medium text-zinc-900 tracking-tight group-hover/row:text-blue-600 transition-colors">{vuln.title}</span>
-                          <span className="text-[12px] text-zinc-400 font-mono tracking-tighter">{vuln.id}</span>
-                        </div>
+                    <div key={i} className={`flex items-start gap-3 p-3.5 hover:bg-zinc-50 transition-colors cursor-pointer group/row active:scale-[0.99] ${i !== ACTIVE_VULNERABILITIES.length - 1 ? 'border-b border-zinc-100' : ''}`}>
+                      <div className="mt-0.5">
+                        <FaGithub className="w-[18px] h-[18px] text-zinc-900" />
                       </div>
-                      <div className="flex items-center gap-4 shrink-0">
-                        <span className="text-[11px] font-semibold text-zinc-900 bg-red-50 px-2 py-0.5 rounded text-[10px] tracking-tight">New</span>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={vuln.userImg} alt="User" className="w-5 h-5 rounded-full object-cover border border-zinc-200 group-hover/row:scale-110 transition-transform" />
-                        <span className="text-[12px] text-zinc-400 w-8 text-right tracking-tight">{vuln.time}</span>
+                      <div className="flex flex-col gap-1 w-full">
+                        <span className="text-[13px] font-semibold text-zinc-900 tracking-tight group-hover/row:text-blue-600 transition-colors">{vuln.title}</span>
+                        <div className="flex items-center gap-1.5 text-[12px] text-zinc-500 tracking-tight">
+                          <div className="w-2.5 h-2.5 rounded-full bg-[#da3633]" />
+                          <span>Last run {vuln.lastRun}</span>
+                          <span className="text-zinc-300">&middot;</span>
+                          <div className="flex items-center gap-1">
+                            <FaChartPie className="w-3.5 h-3.5 text-zinc-400" />
+                            <span><span className="text-[#da3633] underline underline-offset-2">{vuln.assetsFailing}</span> / {vuln.totalAssets} assets failing</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -555,20 +567,26 @@ export function OverviewView() {
               </div>
             </div>
 
-            {/* Column 3: Live Scan Pipeline (Made EXACTLY like the attached circular metrics and nested tree blueprint!) */}
-            <div className="border border-zinc-200 rounded-[12px] bg-white flex flex-col w-full shadow-sm hover:shadow-md transition-shadow group/card min-h-[580px] p-5">
+            {/* Column 3: Live Scan Pipeline (Exact Replica of Provided Blueprint) */}
+            <div className="border border-zinc-200 rounded-[12px] bg-white flex flex-col w-full shadow-sm hover:shadow-md transition-shadow group/card min-h-[580px] p-6">
 
               {/* Header section matching controls in image */}
-              <div className="flex items-center justify-between border-b border-zinc-150 pb-4 mb-5">
-                <h3 className="text-[14px] font-bold text-zinc-900 tracking-tight">Live Pipeline</h3>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-[11px] font-semibold text-zinc-700 bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 px-2 py-0.5 rounded transition-all cursor-pointer">All targets</span>
-                  <span className="text-[11px] font-semibold text-zinc-750 bg-white border border-zinc-200 px-2 py-0.5 rounded inline-flex items-center gap-1 hover:bg-zinc-50 cursor-pointer shadow-sm">
-                    payments-api
-                    <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 text-zinc-500" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M7 15l5 5 5-5M7 9l5-5 5 5" /></svg>
-                  </span>
-                  <button className="text-zinc-400 hover:text-zinc-950 transition-colors p-0.5 cursor-pointer"><svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
-                  <button className="text-zinc-400 hover:text-zinc-950 transition-colors p-0.5 cursor-pointer"><IconMore /></button>
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-[16px] font-bold text-zinc-900 tracking-tight">Summary</h3>
+                <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex items-center bg-white border border-zinc-200 rounded-md shadow-sm overflow-hidden text-[13px] font-medium text-zinc-700">
+                    <button className="px-3 py-1.5 hover:bg-zinc-50 border-r border-zinc-200 transition-colors">All projects</button>
+                    <button className="px-3 py-1.5 hover:bg-zinc-50 flex items-center gap-1.5 transition-colors">
+                      Proposals
+                      <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
+                    </button>
+                  </div>
+                  <button className="text-zinc-400 hover:text-zinc-700 transition-colors cursor-pointer p-1">
+                    <Maximize2 className="w-4 h-4" />
+                  </button>
+                  <button className="text-zinc-400 hover:text-zinc-700 transition-colors cursor-pointer p-1">
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 
@@ -577,221 +595,211 @@ export function OverviewView() {
                   <div className="w-8 h-8 rounded-full border border-dashed border-zinc-200 flex items-center justify-center text-zinc-400 mb-2 bg-zinc-50/50">
                     <div className="w-1.5 h-1.5 rounded-full bg-zinc-300 animate-pulse" />
                   </div>
-                  <span className="text-[12px] font-bold text-zinc-800 tracking-tight">Pipeline idle</span>
-                  <p className="text-[11px] text-zinc-400 max-w-[200px] mt-0.5 leading-normal tracking-tight">Waiting for peer changes or next scheduled repository scan.</p>
+                  <span className="text-[14px] font-bold text-zinc-800 tracking-tight">Pipeline idle</span>
+                  <p className="text-[13px] text-zinc-400 max-w-[200px] mt-1 leading-normal tracking-tight">Waiting for peer changes or next scheduled repository scan.</p>
                 </div>
               ) : (
-                <div className="flex flex-col gap-6 w-full">
+                <div className="flex flex-col w-full">
 
                   {/* Top Metrics Row: 4 Circular progress charts exactly like image */}
-                  <div className="flex items-center justify-between border-b border-zinc-100 pb-5 w-full">
-
-                    {/* 1. Discoveries (Purple) */}
-                    <div className="flex flex-col items-center gap-1.5 flex-1">
-                      <div className="relative w-12 h-12 flex items-center justify-center">
-                        <svg className="w-12 h-12 transform -rotate-90">
-                          <circle cx="24" cy="24" r="16" fill="transparent" stroke="#f4f4f5" strokeWidth="2.5" />
-                          <circle cx="24" cy="24" r="16" fill="transparent" stroke="currentColor" strokeWidth="3.2" className="text-indigo-600" strokeDasharray={100.53} strokeDashoffset={100.53 - (64 / 100) * 100.53} strokeLinecap="round" />
+                  <div className="flex flex-wrap md:flex-nowrap items-center justify-between gap-y-6 gap-x-4 w-full px-2 mb-10">
+                    {/* Discoveries */}
+                    <div className="flex flex-col items-center gap-2.5 flex-1">
+                      <div className="relative w-[52px] h-[52px] flex items-center justify-center">
+                        <svg className="w-[52px] h-[52px] transform -rotate-90">
+                          <circle cx="26" cy="26" r="22" fill="transparent" stroke="#f4f4f5" strokeWidth="4" />
+                          <circle cx="26" cy="26" r="22" fill="transparent" stroke="currentColor" strokeWidth="4" className="text-indigo-500" strokeDasharray={138.2} strokeDashoffset={138.2 - (64 / 100) * 138.2} strokeLinecap="round" />
                         </svg>
-                        <span className="absolute text-[11px] font-extrabold text-zinc-800 font-mono">64%</span>
+                        <span className="absolute text-[12px] font-semibold text-zinc-800">64%</span>
                       </div>
-                      <span className="text-[10px] font-bold text-zinc-400 tracking-tight uppercase">Discoveries</span>
+                      <span className="text-[13px] text-zinc-600 tracking-tight">Discoveries</span>
                     </div>
 
-                    {/* 2. Briefs (Orange) */}
-                    <div className="flex flex-col items-center gap-1.5 flex-1">
-                      <div className="relative w-12 h-12 flex items-center justify-center">
-                        <svg className="w-12 h-12 transform -rotate-90">
-                          <circle cx="24" cy="24" r="16" fill="transparent" stroke="#f4f4f5" strokeWidth="2.5" />
-                          <circle cx="24" cy="24" r="16" fill="transparent" stroke="currentColor" strokeWidth="3.2" className="text-orange-500" strokeDasharray={100.53} strokeDashoffset={100.53 - (48 / 100) * 100.53} strokeLinecap="round" />
+                    {/* Briefs */}
+                    <div className="flex flex-col items-center gap-2.5 flex-1">
+                      <div className="relative w-[52px] h-[52px] flex items-center justify-center">
+                        <svg className="w-[52px] h-[52px] transform -rotate-90">
+                          <circle cx="26" cy="26" r="22" fill="transparent" stroke="#f4f4f5" strokeWidth="4" />
+                          <circle cx="26" cy="26" r="22" fill="transparent" stroke="currentColor" strokeWidth="4" className="text-orange-400" strokeDasharray={138.2} strokeDashoffset={138.2 - (48 / 100) * 138.2} strokeLinecap="round" />
                         </svg>
-                        <span className="absolute text-[11px] font-extrabold text-zinc-800 font-mono">48%</span>
+                        <span className="absolute text-[12px] font-semibold text-zinc-800">48%</span>
                       </div>
-                      <span className="text-[10px] font-bold text-zinc-400 tracking-tight uppercase">Briefs</span>
+                      <span className="text-[13px] text-zinc-600 tracking-tight">Briefs</span>
                     </div>
 
-                    {/* 3. Timescales (Green) */}
-                    <div className="flex flex-col items-center gap-1.5 flex-1">
-                      <div className="relative w-12 h-12 flex items-center justify-center">
-                        <svg className="w-12 h-12 transform -rotate-90">
-                          <circle cx="24" cy="24" r="16" fill="transparent" stroke="#f4f4f5" strokeWidth="2.5" />
-                          <circle cx="24" cy="24" r="16" fill="transparent" stroke="currentColor" strokeWidth="3.2" className="text-emerald-500" strokeDasharray={100.53} strokeDashoffset={100.53 - (16 / 100) * 100.53} strokeLinecap="round" />
+                    {/* Timescales */}
+                    <div className="flex flex-col items-center gap-2.5 flex-1">
+                      <div className="relative w-[52px] h-[52px] flex items-center justify-center">
+                        <svg className="w-[52px] h-[52px] transform -rotate-90">
+                          <circle cx="26" cy="26" r="22" fill="transparent" stroke="#f4f4f5" strokeWidth="4" />
+                          <circle cx="26" cy="26" r="22" fill="transparent" stroke="currentColor" strokeWidth="4" className="text-emerald-500" strokeDasharray={138.2} strokeDashoffset={138.2 - (16 / 100) * 138.2} strokeLinecap="round" />
                         </svg>
-                        <span className="absolute text-[11px] font-extrabold text-zinc-800 font-mono">16%</span>
+                        <span className="absolute text-[12px] font-semibold text-zinc-800">16%</span>
                       </div>
-                      <span className="text-[10px] font-bold text-zinc-400 tracking-tight uppercase">Timescales</span>
+                      <span className="text-[13px] text-zinc-600 tracking-tight">Timescales</span>
                     </div>
 
-                    {/* 4. Proposals (Grey) */}
-                    <div className="flex flex-col items-center gap-1.5 flex-1">
-                      <div className="relative w-12 h-12 flex items-center justify-center">
-                        <svg className="w-12 h-12 transform -rotate-90">
-                          <circle cx="24" cy="24" r="16" fill="transparent" stroke="#f4f4f5" strokeWidth="2.5" />
-                          <circle cx="24" cy="24" r="16" fill="transparent" stroke="currentColor" strokeWidth="3.2" className="text-zinc-300" strokeDasharray={100.53} strokeDashoffset={100.53} strokeLinecap="round" />
+                    {/* Proposals */}
+                    <div className="flex flex-col items-center gap-2.5 flex-1">
+                      <div className="relative w-[52px] h-[52px] flex items-center justify-center">
+                        <svg className="w-[52px] h-[52px] transform -rotate-90">
+                          <circle cx="26" cy="26" r="22" fill="transparent" stroke="#f4f4f5" strokeWidth="4" />
+                          <circle cx="26" cy="26" r="22" fill="transparent" stroke="currentColor" strokeWidth="4" className="text-zinc-300" strokeDasharray={138.2} strokeDashoffset={138.2} strokeLinecap="round" />
                         </svg>
-                        <span className="absolute text-[11px] font-extrabold text-zinc-800 font-mono">0%</span>
+                        <span className="absolute text-[12px] font-semibold text-zinc-800">0%</span>
                       </div>
-                      <span className="text-[10px] font-bold text-zinc-400 tracking-tight uppercase">Proposals</span>
+                      <span className="text-[13px] text-zinc-600 tracking-tight">Proposals</span>
                     </div>
                   </div>
 
                   {/* Main Nested Tree checklist exactly like blueprint */}
-                  <div className="flex flex-col gap-5 w-full">
+                  <div className="flex flex-col gap-6 w-full">
 
-                    {/* Tree Node 1: payments-api */}
-                    <div className="flex flex-col gap-2.5 relative">
-                      <div className="flex items-center gap-2 group cursor-pointer">
-                        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-zinc-400 transform transition-transform group-hover:scale-110" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
-                        <div className="w-6 h-6 rounded-md bg-blue-600 flex items-center justify-center text-white shrink-0 shadow-sm transition-transform group-hover:rotate-12">
-                          <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 2h14v2H5V2zm0 18h14v2H5v-2zm12-4c0-2.21-1.79-4-4-4s-4 1.79-4 4v4h8v-4zm-8-8c0 2.21 1.79 4 4 4s4-1.79 4-4V4H9v4z" /></svg>
+                    {/* Tree Node 1: Hourglass (payments-api) */}
+                    <div className="flex flex-col relative pl-1.5">
+                      <div onClick={() => toggleNode('payments-api')} className="flex items-center gap-3 group cursor-pointer mb-2">
+                        {expandedNodes['payments-api'] ? <ChevronDown className="w-4 h-4 text-zinc-400 shrink-0" strokeWidth={2} /> : <ChevronRight className="w-4 h-4 text-zinc-400 shrink-0" strokeWidth={2} />}
+                        <div className="w-7 h-7 rounded-md bg-[#1d4ed8] flex items-center justify-center text-white shrink-0 shadow-sm">
+                          <FaGithub className="w-4 h-4" />
                         </div>
-                        <span className="text-[13px] font-bold text-zinc-800 tracking-tight group-hover:text-blue-600 transition-colors">payments-api</span>
+                        <span className="text-[14px] font-semibold text-zinc-900 tracking-tight">payments-api</span>
 
-                        <div className="ml-auto flex items-center gap-2">
-                          <div className="w-16 h-1 bg-zinc-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${progress}%` }} />
+                        <div className="ml-auto flex items-center gap-3">
+                          <div className="w-8 h-[3px] bg-zinc-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-500" style={{ width: '66%' }} />
                           </div>
-                          <span className="text-[11px] font-extrabold text-zinc-800 font-mono tracking-tighter w-8 text-right">{progress}%</span>
+                          <span className="text-[13px] font-semibold text-zinc-800 w-8 text-right">66%</span>
                         </div>
                       </div>
 
-                      {/* Tree branches with vertical line and horizontal elbows */}
-                      <div className="flex flex-col gap-3 pl-6 relative">
-                        {/* Vertical connection line */}
-                        <div className="absolute left-[11px] top-0 bottom-3 w-px bg-zinc-200/80" />
+                      {/* Tree branches */}
+                      {expandedNodes['payments-api'] && (
+                        <div className="flex flex-col gap-3 pl-[34px] relative mt-1">
+                          {/* Vertical line */}
+                          <div className="absolute left-[13px] top-1 bottom-4 w-px bg-zinc-200" />
 
-                        {/* Branch 1.1 */}
-                        <div className="flex items-center gap-2.5 relative">
-                          <div className="absolute -left-[15px] top-[9px] w-[15px] h-px bg-zinc-200/80" />
-                          <div className="w-4 h-4 rounded-full bg-zinc-900 text-white flex items-center justify-center shrink-0">
-                            <svg viewBox="0 0 24 24" className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="4.5"><polyline points="20 6 9 17 4 12" /></svg>
-                          </div>
-                          <span className="text-[12px] font-medium text-zinc-400 line-through tracking-tight">Workspace initialization</span>
-                          <span className="ml-auto text-[11px] text-zinc-400 font-mono">12:01:03</span>
-                        </div>
-
-                        {/* Branch 1.2 */}
-                        <div className="flex items-center gap-2.5 relative">
-                          <div className="absolute -left-[15px] top-[9px] w-[15px] h-px bg-zinc-200/80" />
-                          <div className="w-4 h-4 rounded-full bg-zinc-900 text-white flex items-center justify-center shrink-0">
-                            <svg viewBox="0 0 24 24" className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="4.5"><polyline points="20 6 9 17 4 12" /></svg>
-                          </div>
-                          <span className="text-[12px] font-medium text-zinc-400 line-through tracking-tight">AST parsing & discovery</span>
-                          <span className="ml-auto text-[11px] text-zinc-400 font-mono">12:01:09</span>
-                        </div>
-
-                        {/* Branch 1.3 (Dynamic scan step) */}
-                        <div className="flex items-center gap-2.5 relative">
-                          <div className="absolute -left-[15px] top-[9px] w-[15px] h-px bg-zinc-200/80" />
-                          {progress >= 71 ? (
-                            <div className="w-4 h-4 rounded-full bg-zinc-900 text-white flex items-center justify-center shrink-0">
-                              <svg viewBox="0 0 24 24" className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="4.5"><polyline points="20 6 9 17 4 12" /></svg>
+                          {/* Step 1 */}
+                          <div className="flex items-center gap-3 relative">
+                            <div className="bg-white z-10 shrink-0">
+                              <CircleCheck className="w-[18px] h-[18px] text-zinc-800 fill-zinc-800/10" strokeWidth={2} />
                             </div>
-                          ) : (
-                            <div className={`w-4 h-4 rounded-full bg-white border flex items-center justify-center shrink-0 ${progress >= 51 ? 'border-red-500 animate-pulse' : 'border-zinc-300'}`} />
-                          )}
-                          <span className={`text-[12px] font-medium tracking-tight ${progress >= 71 ? 'text-zinc-400 line-through' : 'text-zinc-800'} ${progress >= 51 && progress < 71 ? 'text-red-500 font-bold' : ''}`}>
-                            Generative SAST scan
-                          </span>
-                          <span className={`ml-auto text-[11px] font-mono ${progress >= 51 && progress < 71 ? 'text-red-500 font-bold animate-pulse' : 'text-zinc-400'}`}>12:01:18</span>
-                        </div>
+                            <span className="text-[14px] text-zinc-400 line-through tracking-tight">Workspace initialization</span>
+                            <span className="ml-auto text-[13px] text-zinc-400 tracking-tight font-mono">12:01:03</span>
+                          </div>
 
-                        {/* Branch 1.4 (Dynamic secure patch step) */}
-                        <div className="flex items-center gap-2.5 relative">
-                          <div className="absolute -left-[15px] top-[9px] w-[15px] h-px bg-zinc-200/80" />
-                          {progress >= 97 ? (
-                            <div className="w-4 h-4 rounded-full bg-zinc-900 text-white flex items-center justify-center shrink-0">
-                              <svg viewBox="0 0 24 24" className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="4.5"><polyline points="20 6 9 17 4 12" /></svg>
+                          {/* Step 2 */}
+                          <div className="flex items-center gap-3 relative">
+                            <div className="bg-white z-10 shrink-0">
+                              <CircleCheck className="w-[18px] h-[18px] text-zinc-800 fill-zinc-800/10" strokeWidth={2} />
                             </div>
-                          ) : (
-                            <div className={`w-4 h-4 rounded-full bg-white border flex items-center justify-center shrink-0 ${progress >= 85 ? 'border-indigo-500 animate-pulse' : 'border-zinc-300'}`} />
-                          )}
-                          <span className={`text-[12px] font-medium tracking-tight ${progress >= 97 ? 'text-zinc-400 line-through' : 'text-zinc-800'} ${progress >= 85 && progress < 97 ? 'text-indigo-600 font-bold' : ''}`}>
-                            Synthesize secure patch
-                          </span>
-                          <span className={`ml-auto text-[11px] font-mono ${progress >= 85 && progress < 97 ? 'text-indigo-600 font-bold' : 'text-zinc-400'}`}>12:01:27</span>
+                            <span className="text-[14px] text-zinc-400 line-through tracking-tight">AST parsing & discovery</span>
+                            <span className="ml-auto text-[13px] text-zinc-400 tracking-tight font-mono">12:01:09</span>
+                          </div>
+
+                          {/* Step 3 */}
+                          <div className="flex items-center gap-3 relative">
+                            <div className="bg-white z-10 shrink-0">
+                              <Circle className="w-[18px] h-[18px] text-zinc-300" strokeWidth={2} />
+                            </div>
+                            <span className="text-[14px] text-zinc-700 tracking-tight">Generative SAST scan</span>
+                            <span className="ml-auto text-[13px] text-[#ef4444] tracking-tight font-mono animate-pulse font-bold">12:01:18</span>
+                          </div>
+
+                          {/* Step 4 */}
+                          <div className="flex items-center gap-3 relative">
+                            <div className="bg-white z-10 shrink-0">
+                              <Circle className="w-[18px] h-[18px] text-zinc-300" strokeWidth={2} />
+                            </div>
+                            <span className="text-[14px] text-zinc-700 tracking-tight">Synthesize secure patch</span>
+                            <span className="ml-auto text-[13px] text-zinc-500 tracking-tight font-mono">12:01:27</span>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
 
-                    {/* Tree Node 2: auth-service */}
-                    <div className="flex flex-col gap-2.5 relative">
-                      <div className="flex items-center gap-2 group cursor-pointer">
-                        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-zinc-400" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
-                        <div className="w-6 h-6 rounded-md bg-purple-600 flex items-center justify-center text-white shrink-0 shadow-sm transition-transform group-hover:rotate-12">
-                          <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>
+                    {/* Tree Node 2: Layers (auth-service) */}
+                    <div className="flex flex-col relative pl-1.5">
+                      <div onClick={() => toggleNode('auth-service')} className="flex items-center gap-3 group cursor-pointer mb-2">
+                        {expandedNodes['auth-service'] ? <ChevronDown className="w-4 h-4 text-zinc-400 shrink-0" strokeWidth={2} /> : <ChevronRight className="w-4 h-4 text-zinc-400 shrink-0" strokeWidth={2} />}
+                        <div className="w-7 h-7 rounded-md bg-[#9333ea] flex items-center justify-center text-white shrink-0 shadow-sm opacity-90">
+                          <FaGithub className="w-4 h-4" />
                         </div>
-                        <span className="text-[13px] font-bold text-zinc-800 tracking-tight group-hover:text-blue-600 transition-colors">auth-service</span>
+                        <span className="text-[14px] font-semibold text-zinc-900 tracking-tight">auth-service</span>
 
-                        <div className="ml-auto flex items-center gap-2">
-                          <div className="w-16 h-1 bg-zinc-100 rounded-full overflow-hidden">
+                        <div className="ml-auto flex items-center gap-3">
+                          <div className="w-8 h-[3px] bg-zinc-100 rounded-full overflow-hidden">
                             <div className="h-full bg-emerald-500" style={{ width: '45%' }} />
                           </div>
-                          <span className="text-[11px] font-extrabold text-zinc-800 font-mono tracking-tighter w-8 text-right">45%</span>
+                          <span className="text-[13px] font-semibold text-zinc-800 w-8 text-right">45%</span>
                         </div>
                       </div>
 
-                      {/* Tree branches with vertical line and horizontal elbows */}
-                      <div className="flex flex-col gap-3 pl-6 relative">
-                        <div className="absolute left-[11px] top-0 bottom-3 w-px bg-zinc-200/80" />
+                      {/* Tree branches */}
+                      {expandedNodes['auth-service'] && (
+                        <div className="flex flex-col gap-3 pl-[34px] relative mt-1">
+                          {/* Vertical line */}
+                          <div className="absolute left-[13px] top-1 bottom-4 w-px bg-zinc-200" />
 
-                        {/* Step 2.1 */}
-                        <div className="flex items-center gap-2.5 relative">
-                          <div className="absolute -left-[15px] top-[9px] w-[15px] h-px bg-zinc-200/80" />
-                          <div className="w-4 h-4 rounded-full bg-zinc-900 text-white flex items-center justify-center shrink-0">
-                            <svg viewBox="0 0 24 24" className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="4.5"><polyline points="20 6 9 17 4 12" /></svg>
+                          {/* Step 2.1 */}
+                          <div className="flex items-center gap-3 relative">
+                            <div className="bg-white z-10 shrink-0">
+                              <CircleCheck className="w-[18px] h-[18px] text-zinc-800 fill-zinc-800/10" strokeWidth={2} />
+                            </div>
+                            <span className="text-[14px] text-zinc-400 line-through tracking-tight">Dependency tree mapping</span>
+                            <span className="ml-auto text-[13px] text-zinc-400 tracking-tight font-mono">12:05:10</span>
                           </div>
-                          <span className="text-[12px] font-medium text-zinc-400 line-through tracking-tight">Arrange compliance policy</span>
-                          <span className="ml-auto text-[11px] text-zinc-400 font-mono">20 Aug</span>
-                        </div>
 
-                        {/* Step 2.2 */}
-                        <div className="flex items-center gap-2.5 relative">
-                          <div className="absolute -left-[15px] top-[9px] w-[15px] h-px bg-zinc-200/80" />
-                          <div className="w-4 h-4 rounded-full bg-white border border-zinc-300 shrink-0" />
-                          <span className="text-[12px] font-medium text-zinc-800 tracking-tight">Inject authorization matrix</span>
-                          <span className="ml-auto text-[11px] text-zinc-400 font-mono">24 Aug</span>
-                        </div>
+                          {/* Step 2.2 */}
+                          <div className="flex items-center gap-3 relative">
+                            <div className="bg-white z-10 shrink-0">
+                              <Circle className="w-[18px] h-[18px] text-zinc-300" strokeWidth={2} />
+                            </div>
+                            <span className="text-[14px] text-zinc-700 tracking-tight">Deep taint analysis</span>
+                            <span className="ml-auto text-[13px] text-zinc-500 tracking-tight font-mono">12:05:22</span>
+                          </div>
 
-                        {/* Step 2.3 */}
-                        <div className="flex items-center gap-2.5 relative">
-                          <div className="absolute -left-[15px] top-[9px] w-[15px] h-px bg-zinc-200/80" />
-                          <div className="w-4 h-4 rounded-full bg-white border border-zinc-300 shrink-0" />
-                          <span className="text-[12px] font-medium text-zinc-800 tracking-tight">Quarterly penetration sweep</span>
-                          <span className="ml-auto text-[11px] text-zinc-400 font-mono">25 Aug</span>
+                          {/* Step 2.3 */}
+                          <div className="flex items-center gap-3 relative">
+                            <div className="bg-white z-10 shrink-0">
+                              <Circle className="w-[18px] h-[18px] text-zinc-300" strokeWidth={2} />
+                            </div>
+                            <span className="text-[14px] text-zinc-700 tracking-tight">Vulnerability verification</span>
+                            <span className="ml-auto text-[13px] text-zinc-500 tracking-tight font-mono">12:05:35</span>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
 
-                    {/* Tree Node 3: gateway-router (Collapsed) */}
-                    <div className="flex items-center gap-2.5 group cursor-pointer">
-                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-zinc-400" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
-                      <div className="w-6 h-6 rounded-md bg-red-500 flex items-center justify-center text-white shrink-0 shadow-sm">
-                        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><path d="M12 2v20M2 12h20" /></svg>
+                    {/* Tree Node 3: Nietzsche (gateway-router) */}
+                    <div onClick={() => toggleNode('gateway-router')} className="flex items-center gap-3 group cursor-pointer pl-1.5">
+                      {expandedNodes['gateway-router'] ? <ChevronDown className="w-4 h-4 text-zinc-400 shrink-0" strokeWidth={2} /> : <ChevronRight className="w-4 h-4 text-zinc-400 shrink-0" strokeWidth={2} />}
+                      <div className="w-7 h-7 rounded-md bg-[#ea580c] flex items-center justify-center text-white shrink-0 shadow-sm">
+                        <FaGithub className="w-4 h-4" />
                       </div>
-                      <span className="text-[13px] font-bold text-zinc-800 tracking-tight group-hover:text-blue-600 transition-colors">gateway-router</span>
+                      <span className="text-[14px] font-semibold text-zinc-900 tracking-tight">gateway-router</span>
 
-                      <div className="ml-auto flex items-center gap-2">
-                        <div className="w-16 h-1 bg-zinc-100 rounded-full overflow-hidden">
+                      <div className="ml-auto flex items-center gap-3">
+                        <div className="w-8 h-[3px] bg-zinc-100 rounded-full overflow-hidden">
                           <div className="h-full bg-emerald-500" style={{ width: '23%' }} />
                         </div>
-                        <span className="text-[11px] font-extrabold text-zinc-800 font-mono tracking-tighter w-8 text-right">23%</span>
+                        <span className="text-[13px] font-semibold text-zinc-800 w-8 text-right">23%</span>
                       </div>
                     </div>
+                    {/* Add expanded branch children conditionally if you want, but they are empty in design */}
 
-                    {/* Tree Node 4: billing-worker (Collapsed) */}
-                    <div className="flex items-center gap-2.5 group cursor-pointer">
-                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-zinc-400" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
-                      <div className="w-6 h-6 rounded-md bg-teal-500 flex items-center justify-center text-white shrink-0 shadow-sm">
-                        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" /></svg>
+                    {/* Tree Node 4: Galileo (billing-worker) */}
+                    <div onClick={() => toggleNode('billing-worker')} className="flex items-center gap-3 group cursor-pointer pl-1.5">
+                      {expandedNodes['billing-worker'] ? <ChevronDown className="w-4 h-4 text-zinc-400 shrink-0" strokeWidth={2} /> : <ChevronRight className="w-4 h-4 text-zinc-400 shrink-0" strokeWidth={2} />}
+                      <div className="w-7 h-7 rounded-md bg-[#0ea5e9] flex items-center justify-center text-white shrink-0 shadow-sm opacity-80">
+                        <FaGithub className="w-4 h-4" />
                       </div>
-                      <span className="text-[13px] font-bold text-zinc-800 tracking-tight group-hover:text-blue-600 transition-colors">billing-worker</span>
+                      <span className="text-[14px] font-semibold text-zinc-900 tracking-tight">billing-worker</span>
 
-                      <div className="ml-auto flex items-center gap-2">
-                        <div className="w-16 h-1 bg-zinc-100 rounded-full overflow-hidden">
+                      <div className="ml-auto flex items-center gap-3">
+                        <div className="w-8 h-[3px] bg-zinc-100 rounded-full overflow-hidden">
                           <div className="h-full bg-emerald-500" style={{ width: '0%' }} />
                         </div>
-                        <span className="text-[11px] font-extrabold text-zinc-800 font-mono tracking-tighter w-8 text-right">0%</span>
+                        <span className="text-[13px] font-semibold text-zinc-800 w-8 text-right">0%</span>
                       </div>
                     </div>
 
