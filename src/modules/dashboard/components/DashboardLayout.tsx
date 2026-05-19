@@ -10,25 +10,24 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen bg-white text-zinc-900 font-sans overflow-hidden relative">
       {/* Mobile backdrop dimming overlay */}
       {sidebarOpen && (
-        <div 
+        <div
           onClick={() => setSidebarOpen(false)}
           className="fixed inset-0 bg-zinc-950/30 backdrop-blur-[1px] z-40 lg:hidden"
         />
       )}
 
       {/* Sidebar - translates off-screen on mobile, stays static/visible on lg screens */}
-      <div className={`fixed inset-y-0 left-0 z-50 transform ${
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      } lg:translate-x-0 transition-transform duration-300 ease-in-out shrink-0 w-[240px] h-screen`}>
+      <div className={`fixed inset-y-0 left-0 z-50 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } lg:translate-x-0 transition-transform duration-300 ease-in-out shrink-0 w-[260px] h-screen`}>
         <DashboardSidebar />
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col pl-0 lg:pl-[240px] h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col pl-0 lg:pl-[260px] h-screen overflow-hidden">
         {/* Mobile Header Top Bar (only visible on mobile screens) */}
         <header className="h-[52px] border-b border-zinc-200 flex items-center justify-between px-4 bg-white z-30 lg:hidden shrink-0">
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={() => setSidebarOpen(true)}
               className="p-1 -ml-1 text-zinc-500 hover:text-zinc-900 transition-colors rounded-md hover:bg-zinc-100 active:scale-95 cursor-pointer"
             >

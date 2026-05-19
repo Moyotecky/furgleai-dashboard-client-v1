@@ -194,8 +194,84 @@ const TEAM_ACTIVITY = [
   },
 ];
 
+const REPO_FILTER_OPTIONS = ['All repositories', 'payments-api', 'auth-service', 'infra-core', 'gateway-router', 'billing-worker'];
+
+// Reusable widget header: [All repositories | repo ∨]  ————————————————  [View all]
+function WidgetHeader({ viewAllHref }: { viewAllHref?: string }) {
+  const [selected, setSelected] = React.useState('All repositories');
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <div className="px-4 py-2.5 border-b border-zinc-100 flex items-center justify-between rounded-t-[12px]">
+      {/* Pill segmented control */}
+      <div className="relative">
+        <div className="flex items-center border border-zinc-200/90 rounded-[8px] bg-white shadow-sm overflow-hidden divide-x divide-zinc-200/90">
+          {/* Static: All repositories */}
+          <button
+            onClick={() => { setSelected('All repositories'); setOpen(false); }}
+            className={`px-3 py-1 text-[12px] font-medium tracking-tight transition-colors cursor-pointer whitespace-nowrap ${selected === 'All repositories'
+                ? 'text-zinc-900 bg-zinc-50'
+                : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50'
+              }`}
+          >
+            All repositories
+          </button>
+          {/* Dropdown: specific repo */}
+          <button
+            onClick={() => setOpen(p => !p)}
+            className={`flex items-center gap-1.5 px-3 py-1 text-[12px] font-medium tracking-tight transition-colors cursor-pointer whitespace-nowrap ${selected !== 'All repositories'
+                ? 'text-zinc-900 bg-zinc-50'
+                : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50'
+              }`}
+          >
+            <FaGithub className="w-3 h-3 text-zinc-400" />
+            <span>{selected !== 'All repositories' ? selected : 'Repository'}</span>
+            <svg viewBox="0 0 24 24" className={`w-3 h-3 text-zinc-400 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </button>
+        </div>
+
+        {/* Dropdown panel */}
+        {open && (
+          <div className="absolute top-[calc(100%+6px)] left-0 min-w-[190px] bg-white border border-zinc-200 rounded-[8px] shadow-lg z-50 py-1 overflow-hidden">
+            {REPO_FILTER_OPTIONS.map(opt => (
+              <button
+                key={opt}
+                onClick={() => { setSelected(opt); setOpen(false); }}
+                className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-[12.5px] font-medium tracking-tight cursor-pointer transition-colors ${selected === opt ? 'text-zinc-900 bg-zinc-50' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'
+                  }`}
+              >
+                {opt !== 'All repositories'
+                  ? <FaGithub className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                  : <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-zinc-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>
+                }
+                <span className="truncate">{opt}</span>
+                {selected === opt && (
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-zinc-900 ml-auto shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* View all */}
+      <a
+        href={viewAllHref ?? '#'}
+        className="text-[12px] font-medium text-zinc-500 hover:text-zinc-900 transition-colors tracking-tight flex items-center gap-1 group"
+      >
+        View all
+        <svg viewBox="0 0 24 24" className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      </a>
+    </div>
+  );
+}
+
 export function OverviewView() {
   const [isEmpty, setIsEmpty] = React.useState(false);
+  const [repoFilter, setRepoFilter] = React.useState('All repositories');
+  const [filterOpen, setFilterOpen] = React.useState(false);
+
+  const REPO_FILTERS = ['All repositories', 'payments-api', 'auth-service', 'infra-core', 'gateway-router', 'billing-worker'];
 
   // Live Scan Pipeline Interactive State Machine
   const [progress, setProgress] = React.useState(68);
@@ -357,13 +433,7 @@ export function OverviewView() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
             {/* 2. Active Vulnerabilities Overview */}
             <div className="border border-zinc-200 rounded-[12px] bg-white flex flex-col w-full shadow-sm hover:shadow-md transition-shadow group/card">
-              <div className="px-4 py-3 border-b border-zinc-100 flex items-center justify-between cursor-pointer group/header hover:bg-zinc-50 transition-colors rounded-t-[12px]">
-                <div className="flex items-center gap-2">
-                  <div className="text-zinc-400 group-hover/header:text-blue-600 transition-colors"><IconBranch /></div>
-                  <h3 className="text-[13px] font-semibold text-zinc-900 tracking-tight group-hover/header:text-blue-600 transition-colors">Active Vulnerabilities Overview</h3>
-                </div>
-                <button className="text-[12px] font-medium text-zinc-500 hover:text-zinc-900 hover:underline transition-all tracking-tight active:scale-95">View All</button>
-              </div>
+              <WidgetHeader viewAllHref="/dashboard/vulnerabilities" />
 
               {/* Distribution Stats */}
               <div className="p-4 bg-zinc-50/50 border-b border-zinc-100 grid grid-cols-4 gap-2 text-center">
@@ -420,13 +490,7 @@ export function OverviewView() {
 
             {/* 6. Secrets Exposure Widget */}
             <div className="border border-zinc-200 rounded-[12px] bg-white flex flex-col w-full shadow-sm hover:shadow-md transition-shadow group/card">
-              <div className="px-4 py-3 border-b border-zinc-100 flex items-center justify-between cursor-pointer group/header hover:bg-zinc-50 transition-colors rounded-t-[12px]">
-                <div className="flex items-center gap-2">
-                  <div className="text-red-500 group-hover/header:text-red-600 group-hover/header:scale-110 transition-all"><IconKey /></div>
-                  <h3 className="text-[13px] font-semibold text-zinc-900 tracking-tight group-hover/header:text-red-600 transition-colors">Secrets Exposure</h3>
-                </div>
-                <button className="text-[12px] font-medium text-zinc-500 hover:text-zinc-900 hover:underline transition-all tracking-tight active:scale-95">View All</button>
-              </div>
+              <WidgetHeader viewAllHref="/dashboard/vulnerabilities/secrets" />
 
               {isEmpty ? (
                 <div className="py-12 flex flex-col items-center justify-center text-center">
@@ -480,13 +544,7 @@ export function OverviewView() {
 
             {/* Column 1: Recent PR Security Reviews */}
             <div className="flex flex-col border border-zinc-200 rounded-[12px] bg-white w-full shadow-sm hover:shadow-md transition-shadow group/card min-h-[580px]">
-              <div className="px-4 py-3 border-b border-zinc-100 flex items-center justify-between cursor-pointer group/header hover:bg-zinc-50 transition-colors rounded-t-[12px]">
-                <div className="flex items-center gap-2">
-                  <div className="text-zinc-400 group-hover/header:text-blue-600 transition-colors"><IconPR /></div>
-                  <h3 className="text-[13px] font-semibold text-zinc-900 tracking-tight group-hover/header:text-blue-600 transition-colors">Recent PR Security Reviews</h3>
-                </div>
-                <button className="text-[12px] font-medium text-zinc-500 hover:text-zinc-900 hover:underline transition-all tracking-tight active:scale-95">View All</button>
-              </div>
+              <WidgetHeader viewAllHref="/dashboard/prs" />
 
               {isEmpty ? (
                 <div className="py-24 flex flex-col items-center justify-center text-center">
@@ -524,13 +582,7 @@ export function OverviewView() {
 
             {/* Column 2: Architecture Intelligence */}
             <div className="border border-zinc-200 rounded-[12px] bg-white flex flex-col w-full shadow-sm hover:shadow-md transition-shadow group/card p-5 min-h-[580px]">
-              <div className="flex items-center justify-between border-b border-zinc-100 pb-3 mb-4 cursor-pointer group/header">
-                <div className="flex items-center gap-2">
-                  <div className="text-zinc-950 group-hover/header:scale-110 transition-transform"><IconNetwork /></div>
-                  <h3 className="text-[13px] font-semibold text-zinc-900 tracking-tight group-hover/header:text-blue-600 transition-colors">Architecture Intelligence</h3>
-                </div>
-                <button className="text-[12px] font-medium text-zinc-500 hover:text-zinc-900 hover:underline transition-all tracking-tight active:scale-95">View All</button>
-              </div>
+              <WidgetHeader viewAllHref="/dashboard/architecture" />
 
               <div className="flex items-center justify-center border border-zinc-100 bg-zinc-50/50 py-12 px-2 rounded-lg mb-6 hover:bg-zinc-50 transition-colors cursor-pointer group/graph">
                 {/* SVG Visual Flow diagram preview */}
@@ -572,7 +624,7 @@ export function OverviewView() {
 
               {/* Header section matching controls in image */}
               <div className="flex items-center justify-between mb-8">
-                <h3 className="text-[16px] font-bold text-zinc-900 tracking-tight">Summary</h3>
+                <h3 className="text-[16px] font-bold text-zinc-900 tracking-tight">Live Scan Pipeline</h3>
                 <div className="flex items-center gap-3 shrink-0">
                   <div className="flex items-center bg-white border border-zinc-200 rounded-md shadow-sm overflow-hidden text-[13px] font-medium text-zinc-700">
                     <button className="px-3 py-1.5 hover:bg-zinc-50 border-r border-zinc-200 transition-colors">All projects</button>
@@ -822,13 +874,7 @@ export function OverviewView() {
           </div>
 
           <div className="flex flex-col border border-zinc-200 rounded-[12px] bg-white w-full shadow-sm hover:shadow-md transition-shadow group/card">
-            <div className="px-4 py-3 border-b border-zinc-100 flex items-center justify-between cursor-pointer group/header hover:bg-zinc-50 transition-colors rounded-t-[12px]">
-              <div className="flex items-center gap-2">
-                <div className="text-zinc-400 group-hover/header:text-blue-600 transition-colors"><IconPulse /></div>
-                <h3 className="text-[13px] font-semibold text-zinc-900 tracking-tight group-hover/header:text-blue-600 transition-colors">Team Activity Feed</h3>
-              </div>
-              <button className="text-[12px] font-medium text-zinc-500 hover:text-zinc-900 hover:underline transition-all tracking-tight active:scale-95">View All</button>
-            </div>
+            <WidgetHeader viewAllHref="/dashboard/activity" />
 
             <div className="p-6">
               <h4 className="text-[13px] font-bold text-zinc-900 tracking-tight mb-5">This Week</h4>
