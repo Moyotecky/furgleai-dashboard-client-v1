@@ -11,12 +11,7 @@ import {
   WorkflowCircle01Icon,
   Settings01Icon,
 } from 'hugeicons-react';
-
-const REPOSITORIES = [
-  { name: 'payments-api', href: '/dashboard/repositories/payments-api' },
-  { name: 'auth-service', href: '/dashboard/repositories/auth-service' },
-  { name: 'infra-core', href: '/dashboard/repositories/infra-core' },
-];
+import { useAppSelector } from '@/shared/store/hooks';
 
 function NavItem({
   href,
@@ -50,6 +45,7 @@ function NavItem({
 
 export function DashboardSidebar() {
   const pathname = usePathname();
+  const repositories = useAppSelector((state) => state.repos.items);
 
   return (
     <aside className="w-[260px] h-screen bg-white border-r border-zinc-200/80 flex flex-col fixed left-0 top-0 text-zinc-900 font-sans tracking-tight z-50 select-none">
@@ -103,14 +99,15 @@ export function DashboardSidebar() {
 
 
         {/* Repo list — each item has the GitHub logo */}
-        {REPOSITORIES.map((repo) => {
-          const isActive = pathname === repo.href;
+        {repositories.map((repo) => {
+          const href = `/dashboard/repositories/${repo.slug}`;
+          const isActive = pathname === href || pathname.startsWith(href + '/');
           return (
             <Link
-              key={repo.name}
-              href={repo.href}
+              key={repo.slug}
+              href={href}
               className={`flex items-center gap-2.5 px-2.5 py-[7px] rounded-[6px] text-[13.5px] cursor-pointer active:scale-[0.99] tracking-tight group transition-all ${isActive
-                ? 'font-semibold text-zinc-950'
+                ? 'font-semibold text-zinc-950 bg-zinc-100/40'
                 : 'font-medium text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100/70'
                 }`}
             >
@@ -118,7 +115,13 @@ export function DashboardSidebar() {
                 className={`w-[17px] h-[17px] shrink-0 transition-colors ${isActive ? 'text-zinc-900' : 'text-zinc-400 group-hover:text-zinc-600'
                   }`}
               />
-              <span className="truncate">{repo.name}</span>
+              <span className="truncate flex-1">{repo.name}</span>
+              {repo.status === 'scanning' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse shrink-0" title="Scanning..." />
+              )}
+              {repo.status === 'error' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" title="Has errors" />
+              )}
             </Link>
           );
         })}
