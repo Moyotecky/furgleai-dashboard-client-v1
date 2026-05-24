@@ -1,8 +1,8 @@
 import React from 'react';
-import { PlaceholderView } from '@/modules/analytics/components/PlaceholderView';
+import { TeamAnalyticsView } from '@/modules/analytics';
 
 export const metadata = { title: 'Team Performance Analytics - FurgleAI' };
 
 export default function AnalyticsTeamPage() {
-  return <PlaceholderView title="Team Security Performance" />;
+  return <TeamAnalyticsView />;
 }

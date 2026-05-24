@@ -1,8 +1,8 @@
 import React from 'react';
-import { PlaceholderView } from '@/modules/analytics/components/PlaceholderView';
+import { ArchitectureAnalyticsView } from '@/modules/analytics';
 
 export const metadata = { title: 'Architecture Analytics - FurgleAI' };
 
 export default function AnalyticsArchitecturePage() {
-  return <PlaceholderView title="Architecture Risk Map" />;
+  return <ArchitectureAnalyticsView />;
 }

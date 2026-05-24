@@ -1,8 +1,8 @@
 import React from 'react';
-import { PlaceholderView } from '@/modules/analytics/components/PlaceholderView';
+import { AIExecutionAnalyticsView } from '@/modules/analytics';
 
 export const metadata = { title: 'AI Execution Analytics - FurgleAI' };
 
 export default function AnalyticsAIExecutionPage() {
-  return <PlaceholderView title="AI Execution Intelligence" />;
+  return <AIExecutionAnalyticsView />;
 }
