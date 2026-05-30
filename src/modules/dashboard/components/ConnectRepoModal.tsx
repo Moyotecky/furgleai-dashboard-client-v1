@@ -3,8 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaGithub } from 'react-icons/fa';
-import { useAppDispatch, useAppSelector } from '@/shared/store/hooks';
-import { connectRepo } from '@/shared/store/repoSlice';
+import { useRepositories } from '@/shared/hooks/useRepositories';
 
 interface ConnectRepoModalProps {
   open: boolean;
@@ -12,8 +11,7 @@ interface ConnectRepoModalProps {
 }
 
 export function ConnectRepoModal({ open, onClose }: ConnectRepoModalProps) {
-  const dispatch = useAppDispatch();
-  const unconnected = useAppSelector((s) => s.repos.unconnectedItems);
+  const { availableRepositories: unconnected, loadAvailableRepositories, connectRepository } = useRepositories();
   const [query, setQuery] = useState('');
   const [connecting, setConnecting] = useState<string | null>(null);
   const [connected, setConnected] = useState<string | null>(null);
@@ -25,22 +23,30 @@ export function ConnectRepoModal({ open, onClose }: ConnectRepoModalProps) {
       setQuery('');
       setConnecting(null);
       setConnected(null);
+      loadAvailableRepositories();
     }
-  }, [open]);
+  }, [open, loadAvailableRepositories]);
 
   const filtered = unconnected.filter((r) =>
     r.name.toLowerCase().includes(query.toLowerCase())
   );
 
-  const handleConnect = async (slug: string) => {
-    setConnecting(slug);
-    // Simulate a connection handshake delay
-    await new Promise((r) => setTimeout(r, 1600));
-    dispatch(connectRepo(slug));
-    setConnected(slug);
-    setConnecting(null);
-    await new Promise((r) => setTimeout(r, 900));
-    onClose();
+  const handleConnect = async (repo: any) => {
+    setConnecting(repo.slug || repo.name);
+    try {
+      await connectRepository({
+        repositoryId: repo.id,
+        branch: 'main',
+        scanFrequency: 'continuous',
+        aiAutopatch: true,
+        name: repo.name,
+        url: `https://github.com/acme/${repo.name}`, // Fallback/Mock URL for connect params
+      });
+      setConnected(repo.slug || repo.name);
+      setTimeout(onClose, 900);
+    } catch (err) {
+      setConnecting(null);
+    }
   };
 
   const overlayVariants = {
@@ -128,15 +134,15 @@ export function ConnectRepoModal({ open, onClose }: ConnectRepoModalProps) {
               ) : (
                 <div className="p-2">
                   {filtered.map((repo) => {
-                    const isConnecting = connecting === repo.slug;
-                    const isConnected = connected === repo.slug;
+                    const isConnecting = connecting === repo.name;
+                    const isConnected = connected === repo.name;
                     const disabled = !!connecting;
 
                     return (
                       <div
-                        key={repo.slug}
+                        key={repo.id}
                         className={`flex items-center gap-3.5 px-3 py-3 rounded-[8px] group transition-all ${disabled ? 'opacity-60' : 'hover:bg-zinc-50 cursor-pointer'}`}
-                        onClick={() => !disabled && handleConnect(repo.slug)}
+                        onClick={() => !disabled && handleConnect(repo)}
                       >
                         {/* Icon */}
                         <div className="w-8 h-8 rounded-[7px] bg-zinc-100 border border-zinc-200 flex items-center justify-center shrink-0">
@@ -154,7 +160,7 @@ export function ConnectRepoModal({ open, onClose }: ConnectRepoModalProps) {
                           <div className="flex items-center gap-3 mt-0.5">
                             <span className="text-[11px] text-zinc-400 flex items-center gap-1">
                               <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 3v12M6 15c0 3.314 2.686 6 6 6s6-2.686 6-6" strokeLinecap="round"/><circle cx="6" cy="3" r="2"/><circle cx="18" cy="15" r="2"/></svg>
-                              {repo.branch}
+                              main
                             </span>
                           </div>
                         </div>

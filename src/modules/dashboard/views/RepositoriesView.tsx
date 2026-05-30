@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaGithub } from 'react-icons/fa';
-import { useAppSelector } from '@/shared/store/hooks';
-import { Repository } from '@/shared/store/repoSlice';
+import { useRepositories } from '@/shared/hooks/useRepositories';
+import { Repository } from '@/shared/services/repositoriesApi';
 import { ConnectRepoModal } from '../components/ConnectRepoModal';
 import { RepoDetailsDrawer } from '../components/RepoDetailsDrawer';
 
@@ -77,12 +77,16 @@ const FILTER_LABELS: Record<FilterType, string> = {
 };
 
 export function RepositoriesView() {
-  const repos = useAppSelector((s) => s.repos.items);
+  const { repositories: repos, loadRepositories, isActionLoading } = useRepositories();
   const [filter, setFilter] = useState<FilterType>('all');
   const [query, setQuery] = useState('');
   const [connectOpen, setConnectOpen] = useState(false);
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    loadRepositories();
+  }, [loadRepositories]);
 
   // "/" keyboard shortcut to focus search
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -241,19 +245,19 @@ export function RepositoriesView() {
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1">
                     <span className="text-[9.5px] text-zinc-400 font-medium">C</span>
-                    <SeverityBadge count={repo.critical} color="text-red-500" />
+                    <SeverityBadge count={repo.vulnerabilities?.critical || 0} color="text-red-500" />
                   </div>
                   <div className="flex items-center gap-1">
                     <span className="text-[9.5px] text-zinc-400 font-medium">H</span>
-                    <SeverityBadge count={repo.high} color="text-orange-500" />
+                    <SeverityBadge count={repo.vulnerabilities?.high || 0} color="text-orange-500" />
                   </div>
                   <div className="flex items-center gap-1">
                     <span className="text-[9.5px] text-zinc-400 font-medium">M</span>
-                    <SeverityBadge count={repo.medium} color="text-amber-500" />
+                    <SeverityBadge count={repo.vulnerabilities?.medium || 0} color="text-amber-500" />
                   </div>
                   <div className="flex items-center gap-1">
                     <span className="text-[9.5px] text-zinc-400 font-medium">L</span>
-                    <SeverityBadge count={repo.low} color="text-zinc-400" />
+                    <SeverityBadge count={repo.vulnerabilities?.low || 0} color="text-zinc-400" />
                   </div>
                 </div>
 
@@ -276,7 +280,7 @@ export function RepositoriesView() {
 
                 {/* Last Scan */}
                 <div className="flex items-center">
-                  <span className="text-[12px] text-zinc-400 font-medium">{repo.lastScan}</span>
+                  <span className="text-[12px] text-zinc-400 font-medium">{repo.lastScan?.timestamp || 'Never'}</span>
                 </div>
               </motion.div>
             ))}
@@ -290,9 +294,9 @@ export function RepositoriesView() {
           <div className="flex items-center gap-6 px-4">
             {[
               { label: 'Total Repositories', val: repos.length },
-              { label: 'Critical Issues', val: repos.reduce((s, r) => s + r.critical, 0), color: 'text-red-500' },
-              { label: 'High Issues', val: repos.reduce((s, r) => s + r.high, 0), color: 'text-orange-500' },
-              { label: 'Avg. Score', val: Math.round(repos.reduce((s, r) => s + r.score, 0) / repos.length) },
+              { label: 'Critical Issues', val: repos.reduce((s, r) => s + (r.vulnerabilities?.critical || 0), 0), color: 'text-red-500' },
+              { label: 'High Issues', val: repos.reduce((s, r) => s + (r.vulnerabilities?.high || 0), 0), color: 'text-orange-500' },
+              { label: 'Avg. Score', val: repos.length > 0 ? Math.round(repos.reduce((s, r) => s + (r.score || 0), 0) / repos.length) : 0 },
             ].map(({ label, val, color }) => (
               <div key={label} className="flex items-baseline gap-1.5">
                 <span className={`text-[15px] font-bold tracking-tight ${color ?? 'text-zinc-900'}`}>{val}</span>

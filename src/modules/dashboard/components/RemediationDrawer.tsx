@@ -1,29 +1,47 @@
 'use client';
 
-import React from 'react';
 import { X, Copy, CheckCircle2, AlertCircle, RefreshCw, GitPullRequest, ArrowRight } from 'lucide-react';
-
-interface Finding {
-  id: string;
-  severity: 'critical' | 'high' | 'medium' | 'low';
-  title: string;
-  status: 'READY_TO_FIX' | 'FIX_GENERATING' | 'FIX_GENERATED' | 'PR_CREATED' | 'MANUAL_REVIEW' | 'BLOCKED';
-  source: string;
-  file: string;
-  updatedAt: string;
-  description: string;
-  attackPath: string[];
-  codeSegment: string;
-  patchCode: string;
-  confidence: number;
-}
+import { useVulnerabilities } from '@/shared/hooks/useVulnerabilities';
+import { Vulnerability } from '@/shared/services/vulnerabilitiesApi';
 
 interface RemediationDrawerProps {
-  finding: Finding | null;
+  finding: Vulnerability | null;
   onClose: () => void;
 }
 
 export function RemediationDrawer({ finding, onClose }: RemediationDrawerProps) {
+  const { generateFix, approveFix, dismissVulnerability, isActionLoading } = useVulnerabilities();
+
+  const handleApplyFix = async () => {
+    if (!finding) return;
+    try {
+      await approveFix(finding.id, { fixId: 'fix-' + finding.id, prTitle: `Fix ${finding.title}`, autoMerge: true });
+      onClose();
+    } catch (e) {
+      // toast handles error
+    }
+  };
+
+  const handleRegenerate = async () => {
+    if (!finding) return;
+    try {
+      await generateFix(finding.id, { preferredApproach: 'alternative' });
+      // Don't close so they see state change
+    } catch (e) {
+      // toast handles error
+    }
+  };
+
+  const handleDismiss = async () => {
+    if (!finding) return;
+    try {
+      await dismissVulnerability(finding.id, 'acceptable_risk');
+      onClose();
+    } catch (e) {
+      // toast handles error
+    }
+  };
+
   if (!finding) return null;
 
   return (
@@ -126,7 +144,7 @@ export function RemediationDrawer({ finding, onClose }: RemediationDrawerProps) 
                 </button>
               </div>
               <pre className="p-4 text-[13px] font-mono text-zinc-300 overflow-x-auto">
-                <code>{finding.codeSegment}</code>
+                <code>{typeof finding.codeSegment === 'string' ? finding.codeSegment : (finding.codeSegment?.before + '\n' + finding.codeSegment?.after)}</code>
               </pre>
             </div>
           </section>
@@ -159,23 +177,39 @@ export function RemediationDrawer({ finding, onClose }: RemediationDrawerProps) 
         {/* Footer Actions */}
         <div className="p-6 bg-white border-t border-zinc-200 flex flex-col gap-3 sticky bottom-0 z-10">
           <div className="grid grid-cols-2 gap-3">
-            <button className="flex items-center justify-center gap-2 bg-black hover:bg-zinc-800 text-white px-4 py-2.5 rounded-lg font-semibold text-[14px] shadow-sm transition-colors active:scale-[0.98]">
+            <button 
+              onClick={handleApplyFix}
+              disabled={isActionLoading || finding.status !== 'FIX_GENERATED'}
+              className="flex items-center justify-center gap-2 bg-black hover:bg-zinc-800 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg font-semibold text-[14px] shadow-sm transition-colors active:scale-[0.98]"
+            >
               <CheckCircle2 className="w-4 h-4" />
               Apply AI Fix
             </button>
-            <button className="flex items-center justify-center gap-2 bg-white border border-zinc-200 text-zinc-900 hover:bg-zinc-50 px-4 py-2.5 rounded-lg font-semibold text-[14px] shadow-sm transition-colors active:scale-[0.98]">
+            <button 
+              onClick={handleApplyFix}
+              disabled={isActionLoading || finding.status !== 'FIX_GENERATED'}
+              className="flex items-center justify-center gap-2 bg-white border border-zinc-200 text-zinc-900 hover:bg-zinc-50 disabled:opacity-50 px-4 py-2.5 rounded-lg font-semibold text-[14px] shadow-sm transition-colors active:scale-[0.98]"
+            >
               <GitPullRequest className="w-4 h-4" />
               Generate PR
             </button>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <button className="flex items-center justify-center gap-2 bg-white border border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 px-4 py-2 rounded-lg font-medium text-[13px] transition-colors">
-              <RefreshCw className="w-3.5 h-3.5" />
+            <button 
+              onClick={handleRegenerate}
+              disabled={isActionLoading || finding.status === 'PR_CREATED'}
+              className="flex items-center justify-center gap-2 bg-white border border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 disabled:opacity-50 px-4 py-2 rounded-lg font-medium text-[13px] transition-colors"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isActionLoading && finding.status === 'FIX_GENERATING' ? 'animate-spin' : ''}`} />
               Regenerate Patch
             </button>
-            <button className="flex items-center justify-center gap-2 bg-white border border-zinc-200 text-yellow-600 hover:bg-yellow-50 px-4 py-2 rounded-lg font-medium text-[13px] transition-colors">
+            <button 
+              onClick={handleDismiss}
+              disabled={isActionLoading}
+              className="flex items-center justify-center gap-2 bg-white border border-zinc-200 text-yellow-600 hover:bg-yellow-50 disabled:opacity-50 px-4 py-2 rounded-lg font-medium text-[13px] transition-colors"
+            >
               <AlertCircle className="w-3.5 h-3.5" />
-              Require Manual Review
+              Dismiss Finding
             </button>
           </div>
         </div>

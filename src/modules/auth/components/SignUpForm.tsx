@@ -1,17 +1,20 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAppDispatch } from '@/shared/store/hooks';
-import { loginStart, loginSuccess, loginFailure } from '@/shared/store/authSlice';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/shared/hooks/useAuth';
+import { getFieldError } from '@/shared/lib/errorParser';
+import { useToast } from '@/shared/lib/toastContext';
+import { tokenManager } from '@/shared/lib/tokenManager';
 import { motion } from 'framer-motion';
 import SocialButton from './SocialButton';
 import InputField from './InputField';
 import { signUpSchema } from '../utils/validation';
 
 export default function SignUpForm() {
-  const dispatch = useAppDispatch();
   const router = useRouter();
+  const { register, isActionLoading: isSubmitting } = useAuth();
+  const { toast } = useToast();
 
   // Form State
   const [username, setUsername] = useState('');
@@ -20,7 +23,6 @@ export default function SignUpForm() {
   
   // UI States
   const [errors, setErrors] = useState<{ username?: string; email?: string; password?: string }>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Logo SVG corresponding to the top branding double chevron in a circular container
   const Logo = () => (
@@ -93,27 +95,33 @@ export default function SignUpForm() {
     e.preventDefault();
     if (!validateForm()) return;
 
-    setIsSubmitting(true);
-    dispatch(loginStart());
-
     try {
-      // Simulate backend delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      const fakeUser = {
-        id: 'usr_furgle_' + Math.random().toString(36).substr(2, 9),
+      const response = await register({
+        username,
         email,
-        name: username,
-        role: 'developer',
-      };
-      
-      dispatch(loginSuccess({ user: fakeUser, token: 'fake_jwt_token_furgle' }));
-      // Reroute to the email verification step first!
-      router.push('/auth/verify-email');
+        password,
+        confirmPassword: password, // For simplicity if UI doesn't have it
+        firstName: '',
+        lastName: '',
+        acceptTerms: true,
+      });
+
+      if (response.verification.required) {
+        tokenManager.setPendingEmail(email);
+        router.push('/auth/verify-email');
+      } else {
+        router.push('/');
+      }
     } catch (err) {
-      dispatch(loginFailure('An error occurred during account creation.'));
-    } finally {
-      setIsSubmitting(false);
+      const emailErr = getFieldError(err, 'email');
+      const userErr = getFieldError(err, 'username');
+      const passErr = getFieldError(err, 'password');
+
+      if (emailErr || userErr || passErr) {
+        setErrors({ email: emailErr, username: userErr, password: passErr });
+      } else {
+        toast({ type: 'error', title: 'Sign Up Failed', message: 'Could not create account. Please try again.' });
+      }
     }
   };
 

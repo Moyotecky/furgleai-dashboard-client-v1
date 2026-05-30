@@ -19,9 +19,9 @@ const TABS = [
 function ExecMetrics() {
   const repos = useAppSelector((s) => s.repos.items);
   const totalRepos = repos.length;
-  const totalCritical = repos.reduce((s, r) => s + r.critical, 0);
-  const totalHigh = repos.reduce((s, r) => s + r.high, 0);
-  const totalIssues = repos.reduce((s, r) => s + r.critical + r.high + r.medium + r.low, 0);
+  const totalCritical = repos.reduce((s, r) => s + (r.vulnerabilities?.critical || 0), 0);
+  const totalHigh = repos.reduce((s, r) => s + (r.vulnerabilities?.high || 0), 0);
+  const totalIssues = repos.reduce((s, r) => s + (r.vulnerabilities?.critical || 0) + (r.vulnerabilities?.high || 0) + (r.vulnerabilities?.medium || 0) + (r.vulnerabilities?.low || 0), 0);
   const avgScore = repos.length > 0 ? Math.round(repos.reduce((s, r) => s + r.score, 0) / repos.length) : 0;
   const activeRepos = repos.filter((r) => r.status === 'active').length;
   const passPct = totalIssues > 0 ? Math.max(0, Math.round(100 - (totalCritical * 20 + totalHigh * 8) / Math.max(1, totalIssues) * 10)) : 97;

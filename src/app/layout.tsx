@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, Poppins } from "next/font/google";
 import { StoreProvider } from "@/shared/store/provider";
+import { ToastProvider } from "@/shared/lib/toastContext";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -32,7 +33,9 @@ export default function RootLayout({
     >
       <body className="min-h-full bg-black text-white font-sans flex flex-col">
         <StoreProvider>
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </StoreProvider>
       </body>
     </html>

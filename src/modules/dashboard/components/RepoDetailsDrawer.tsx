@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaGithub } from 'react-icons/fa';
-import { useAppDispatch } from '@/shared/store/hooks';
-import { deleteRepo, updateRepo, Repository } from '@/shared/store/repoSlice';
+import { useRepositories } from '@/shared/hooks/useRepositories';
+import { Repository } from '@/shared/services/repositoriesApi';
 import Link from 'next/link';
 
 interface RepoDetailsDrawerProps {
@@ -69,7 +69,7 @@ function StatusBadge({ status }: { status: Repository['status'] }) {
 }
 
 export function RepoDetailsDrawer({ repo, onClose }: RepoDetailsDrawerProps) {
-  const dispatch = useAppDispatch();
+  const { updateRepository, disconnectRepository } = useRepositories();
   const [tab, setTab] = useState<'overview' | 'settings' | 'danger'>('overview');
   const [branch, setBranch] = useState('');
   const [scanFreq, setScanFreq] = useState<Repository['scanFrequency']>('continuous');
@@ -90,19 +90,26 @@ export function RepoDetailsDrawer({ repo, onClose }: RepoDetailsDrawerProps) {
     }
   }, [repo]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!repo) return;
-    dispatch(updateRepo({ slug: repo.slug, changes: { branch, scanFrequency: scanFreq, aiAutopatch } }));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    try {
+      await updateRepository(repo.slug, { branch, scanFrequency: scanFreq, aiAutopatch });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      // toast handles the error
+    }
   };
 
   const handleDelete = async () => {
     if (!repo || deleteInput !== repo.name) return;
     setDeleting(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    dispatch(deleteRepo(repo.slug));
-    onClose();
+    try {
+      await disconnectRepository(repo.slug);
+      onClose();
+    } catch (e) {
+      setDeleting(false);
+    }
   };
 
   const canDelete = repo && deleteInput === repo.name;
@@ -205,10 +212,10 @@ export function RepoDetailsDrawer({ repo, onClose }: RepoDetailsDrawerProps) {
                       <ScorePill score={repo.score} />
                       <div className="flex-1 grid grid-cols-2 gap-2">
                         {[
-                          { label: 'Critical', val: repo.critical, color: 'text-red-600' },
-                          { label: 'High', val: repo.high, color: 'text-orange-600' },
-                          { label: 'Medium', val: repo.medium, color: 'text-amber-600' },
-                          { label: 'Low', val: repo.low, color: 'text-zinc-500' },
+                          { label: 'Critical', val: repo.vulnerabilities?.critical || 0, color: 'text-red-600' },
+                          { label: 'High', val: repo.vulnerabilities?.high || 0, color: 'text-rose-500' },
+                          { label: 'Medium', val: repo.vulnerabilities?.medium || 0, color: 'text-amber-500' },
+                          { label: 'Low', val: repo.vulnerabilities?.low || 0, color: 'text-zinc-500' },
                         ].map(({ label, val, color }) => (
                           <div key={label} className="flex flex-col bg-zinc-50 border border-zinc-100 rounded-[8px] px-3 py-2">
                             <span className="text-[9.5px] font-bold uppercase tracking-wider text-zinc-400">{label}</span>
@@ -226,7 +233,7 @@ export function RepoDetailsDrawer({ repo, onClose }: RepoDetailsDrawerProps) {
                       {[
                         { label: 'Branch', val: repo.branch },
                         { label: 'Scan Frequency', val: repo.scanFrequency === 'continuous' ? 'Continuous (On Push)' : repo.scanFrequency === 'daily' ? 'Daily' : 'Weekly' },
-                        { label: 'Last Scan', val: repo.lastScan },
+                        { label: 'Last Scan', val: repo.lastScan?.timestamp || 'Never' },
                         { label: 'AI Autopatch', val: repo.aiAutopatch ? 'Enabled' : 'Disabled' },
                         { label: 'Visibility', val: repo.isPrivate ? 'Private' : 'Public' },
                         { label: 'Connected', val: repo.connectedAt },

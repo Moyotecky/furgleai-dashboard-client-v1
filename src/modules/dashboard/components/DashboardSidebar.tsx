@@ -11,7 +11,8 @@ import {
   WorkflowCircle01Icon,
   Settings01Icon,
 } from 'hugeicons-react';
-import { useAppSelector } from '@/shared/store/hooks';
+import { useAppSelector, useAppDispatch } from '@/shared/store/hooks';
+import { logoutUser } from '@/shared/store/authSlice';
 
 function NavItem({
   href,
@@ -45,7 +46,20 @@ function NavItem({
 
 export function DashboardSidebar() {
   const pathname = usePathname();
+  const dispatch = useAppDispatch();
   const repositories = useAppSelector((state) => state.repos.items);
+  const user = useAppSelector((state) => state.auth.user);
+
+  const displayName = user
+    ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || user.email
+    : 'User';
+  const workspaceName = displayName ? `${displayName.split(' ')[0]}'s Workspace` : 'My Workspace';
+  const initials = displayName
+    .split(' ')
+    .slice(0, 2)
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase();
 
   return (
     <aside className="w-[260px] h-screen bg-white border-r border-zinc-200/80 flex flex-col fixed left-0 top-0 text-zinc-900 font-sans tracking-tight z-50 select-none">
@@ -54,9 +68,9 @@ export function DashboardSidebar() {
       <div className="h-[52px] px-3.5 flex items-center justify-between shrink-0 border-b border-zinc-100">
         <div className="flex items-center gap-2 cursor-pointer hover:bg-zinc-100 px-1.5 py-1 -ml-1.5 rounded-md transition-colors active:scale-[0.98]">
           <div className="w-[22px] h-[22px] bg-zinc-900 rounded-[5px] flex items-center justify-center shadow-sm">
-            <div className="w-[9px] h-[9px] bg-white rounded-[2px]" />
+            <span className="text-[9px] font-bold text-white leading-none">{initials.slice(0, 2) || 'FG'}</span>
           </div>
-          <span className="text-[13px] font-semibold text-zinc-900 tracking-tight">Acme Corp</span>
+          <span className="text-[13px] font-semibold text-zinc-900 tracking-tight truncate max-w-[140px]">{workspaceName}</span>
           <svg viewBox="0 0 24 24" className="w-3 h-3 text-zinc-400 mt-px shrink-0" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 10l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </div>
 
@@ -189,22 +203,23 @@ export function DashboardSidebar() {
         <div className="px-2.5 pb-3">
           <div className="flex items-center justify-between px-2.5 py-2 hover:bg-zinc-100/80 rounded-[6px] cursor-pointer transition-colors group active:scale-[0.98]">
             <div className="flex items-center gap-2.5">
-              <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-zinc-200">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=256&h=256&q=80&fit=crop"
-                  alt="User avatar"
-                  className="w-full h-full object-cover"
-                />
+              <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-zinc-200 bg-zinc-900 flex items-center justify-center">
+                <span className="text-[9px] font-bold text-white leading-none">{initials.slice(0, 2) || 'U'}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-[12.5px] font-medium text-zinc-700 tracking-tight leading-tight group-hover:text-zinc-900 transition-colors">Developer</span>
-                <span className="text-[11px] text-zinc-400 tracking-tight leading-tight">admin</span>
+                <span className="text-[12.5px] font-medium text-zinc-700 tracking-tight leading-tight group-hover:text-zinc-900 transition-colors truncate max-w-[130px]">{displayName}</span>
+                <span className="text-[11px] text-zinc-400 tracking-tight leading-tight truncate max-w-[130px]">{user?.role?.toLowerCase() || 'member'}</span>
               </div>
             </div>
-            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-zinc-300 group-hover:text-zinc-400 transition-colors" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M8 9l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <button
+              onClick={() => dispatch(logoutUser())}
+              title="Sign out"
+              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-zinc-200"
+            >
+              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-zinc-500" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>

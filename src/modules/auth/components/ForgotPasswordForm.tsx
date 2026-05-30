@@ -3,15 +3,18 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import InputField from './InputField';
 import { forgotPasswordSchema } from '../utils/validation';
+import { authApi } from '@/shared/services/authApi';
+import { tokenManager } from '@/shared/lib/tokenManager';
+import { getFieldError } from '@/shared/lib/errorParser';
+import InputField from './InputField';
 
 export default function ForgotPasswordForm() {
   const router = useRouter();
 
   // Form State
   const [email, setEmail] = useState('');
-  
+
   // UI States
   const [error, setError] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,16 +59,17 @@ export default function ForgotPasswordForm() {
     setIsSubmitting(true);
 
     try {
-      // Simulate backend delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await authApi.forgotPassword(email);
+      tokenManager.setPendingEmail(email); // So verify form knows what email to use
       setIsSuccess(true);
-      
+
       // Delay before redirecting to code verification
       setTimeout(() => {
         router.push('/auth/verify-email?recovery=true');
       }, 2000);
     } catch (err) {
-      setError('An unexpected error occurred. Please try again.');
+      const fieldError = getFieldError(err, 'email');
+      setError(fieldError || 'An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -73,7 +77,7 @@ export default function ForgotPasswordForm() {
 
   return (
     <div className="w-full max-w-[420px] flex flex-col justify-center px-4 py-8 md:py-12 bg-white text-zinc-950 font-sans min-h-screen">
-      
+
       {/* Brand Logo Wrapper */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}

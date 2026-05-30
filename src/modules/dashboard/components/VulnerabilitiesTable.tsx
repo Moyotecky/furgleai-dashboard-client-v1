@@ -4,20 +4,7 @@ import React, { useState } from 'react';
 import { FaGithub } from 'react-icons/fa';
 import { ChevronDown, ChevronRight, PlayCircle } from 'lucide-react';
 
-export interface Vulnerability {
-  id: string;
-  severity: 'critical' | 'high' | 'medium' | 'low';
-  title: string;
-  status: 'READY_TO_FIX' | 'FIX_GENERATING' | 'FIX_GENERATED' | 'PR_CREATED' | 'MANUAL_REVIEW' | 'BLOCKED';
-  source: string;
-  file: string;
-  updatedAt: string;
-  description: string;
-  attackPath: string[];
-  codeSegment: string;
-  patchCode: string;
-  confidence: number;
-}
+import { Vulnerability } from '@/shared/services/vulnerabilitiesApi';
 
 interface VulnerabilitiesTableProps {
   findings: Vulnerability[];

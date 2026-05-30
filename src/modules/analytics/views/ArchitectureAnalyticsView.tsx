@@ -3,19 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-// ── Mock Data ──────────────────────────────────────────────────────────────
-const DEPENDENCIES = [
-  { pkg: 'lodash', ver: '4.17.15', risk: 'critical', type: 'direct', repos: 3 },
-  { pkg: 'axios', ver: '0.21.1', risk: 'high', type: 'direct', repos: 2 },
-  { pkg: 'minimist', ver: '1.2.5', risk: 'high', type: 'transitive', repos: 5 },
-  { pkg: 'express', ver: '4.17.0', risk: 'medium', type: 'direct', repos: 1 },
-];
-
-const SECRETS = [
-  { type: 'AWS Access Key', status: 'active', repo: 'infra-core', file: '.env.example', time: '2h ago' },
-  { type: 'Stripe API Key', status: 'resolved', repo: 'payments-api', file: 'config.ts', time: '1d ago' },
-  { type: 'DB Password', status: 'resolved', repo: 'auth-service', file: 'docker-compose.yml', time: '3d ago' },
-];
+// ── Pending API Data ────────────────────────────────────────────────────────
 
 // ── Graph Node Component ───────────────────────────────────────────────────
 function GraphNode({ label, type, risk, x, y }: { label: string; type: string; risk: 'low' | 'medium' | 'high' | 'critical'; x: string; y: string }) {
@@ -98,17 +86,10 @@ export function ArchitectureAnalyticsView() {
             <span className="text-[10.5px] font-bold text-zinc-400 uppercase tracking-widest">Repos</span>
           </div>
           <div className="flex-1 overflow-y-auto">
-            {DEPENDENCIES.map((dep, i) => (
-              <div key={i} className="grid grid-cols-[1fr_80px_80px_60px] gap-3 px-5 py-3 border-b border-zinc-50 last:border-0 hover:bg-zinc-50/80 transition-colors">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${dep.risk === 'critical' ? 'bg-red-500' : dep.risk === 'high' ? 'bg-orange-500' : 'bg-amber-400'}`} />
-                  <span className="text-[12.5px] font-mono text-zinc-800 tracking-tight">{dep.pkg}</span>
-                </div>
-                <span className="text-[11.5px] font-mono text-zinc-500 self-center">{dep.ver}</span>
-                <span className="text-[11px] text-zinc-500 self-center capitalize">{dep.type}</span>
-                <span className="text-[12px] font-bold text-zinc-700 self-center">{dep.repos}</span>
-              </div>
-            ))}
+            <div className="py-12 flex flex-col items-center justify-center text-center h-full">
+              <span className="text-[13px] font-medium text-zinc-500">No dependencies mapped</span>
+              <span className="text-[11px] text-zinc-400 mt-1">Pending Architecture API endpoint</span>
+            </div>
           </div>
         </div>
 
@@ -119,22 +100,9 @@ export function ArchitectureAnalyticsView() {
             <p className="text-[11.5px] text-zinc-400 mt-0.5">Tracked leaked credentials over time</p>
           </div>
           <div className="flex-1 p-5">
-            <div className="relative border-l-2 border-zinc-100 ml-3 flex flex-col gap-6 py-2">
-              {SECRETS.map((sec, i) => (
-                <div key={i} className="relative pl-6">
-                  <div className={`absolute w-3 h-3 rounded-full -left-[7px] top-1 border-2 border-white ${sec.status === 'active' ? 'bg-red-500 shadow-[0_0_0_2px_rgba(239,68,68,0.2)]' : 'bg-emerald-500'}`} />
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="text-[13px] font-semibold text-zinc-900 tracking-tight flex items-center gap-2">
-                        {sec.type}
-                        {sec.status === 'active' && <span className="text-[9px] font-bold text-red-600 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded-[4px]">ACTIVE</span>}
-                      </div>
-                      <div className="text-[11.5px] font-mono text-zinc-500 mt-0.5">{sec.repo} <span className="text-zinc-300">/</span> {sec.file}</div>
-                    </div>
-                    <span className="text-[10.5px] text-zinc-400 font-medium">{sec.time}</span>
-                  </div>
-                </div>
-              ))}
+            <div className="py-12 flex flex-col items-center justify-center text-center h-full">
+              <span className="text-[13px] font-medium text-zinc-500">No secrets exposure tracked</span>
+              <span className="text-[11px] text-zinc-400 mt-1">Pending Architecture API endpoint</span>
             </div>
           </div>
         </div>

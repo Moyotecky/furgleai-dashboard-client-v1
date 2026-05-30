@@ -3,6 +3,9 @@
 import React from 'react';
 import { CircleCheck, Circle, ChevronRight, ChevronDown, Maximize2, MoreVertical } from 'lucide-react';
 import { FaGithub, FaChartPie } from 'react-icons/fa';
+import { useAnalytics } from '@/shared/hooks/useAnalytics';
+import { useVulnerabilities } from '@/shared/hooks/useVulnerabilities';
+import { useRepositories } from '@/shared/hooks/useRepositories';
 
 // Custom Minimal Enterprise SVGs
 const IconBranch = () => (
@@ -115,91 +118,12 @@ const ChevronCircleIcon = ({ colorClass }: { colorClass: string }) => (
   </div>
 );
 
-// Mock Data matching the new FurgleAI SOC specifications
-const ACTIVE_VULNERABILITIES = [
-  { title: 'Ensure any change to code receives approval of at least one strongly authenticat...', lastRun: '3 day ago', assetsFailing: 1, totalAssets: 7 },
-  { title: 'Hardcoded credentials check missing in pre-commit hooks', lastRun: '1 day ago', assetsFailing: 2, totalAssets: 15 },
-  { title: 'Enforce branch protection rules on main branches', lastRun: '5 hours ago', assetsFailing: 1, totalAssets: 4 },
-];
-
-const REPO_RISK_RANKING = [
-  { name: 'payments-api', score: 42, critical: 8, lastScan: '3m ago' },
-  { name: 'auth-service', score: 78, critical: 2, lastScan: '12m ago' },
-  { name: 'dashboard-ui', score: 95, critical: 0, lastScan: '1h ago' },
-];
-
-const SECRETS_EXPOSURE = [
-  { type: 'Stripe API Key', location: 'auth-service (commit 4f9a3b)', status: 'Active Leaked Key', severity: 'critical', slug: 'stripe' },
-  { type: 'AWS Secret Access Key', location: 'payments-api (.env exposed)', status: 'Unencrypted Env', severity: 'critical', slug: 'amazonwebservices' },
-  { type: 'JWT Private Secret', location: 'user-service (hardcoded)', status: 'Hardcoded', severity: 'high', slug: 'jsonwebtokens' },
-];
-
-const PR_SECURITY_REVIEWS = [
-  { id: '#182', title: 'Implement stripe checkout webhook', score: 'Low Risk', status: 'Approved', suggestions: 'SQL Injection detected - Auto-fix patch generated.', userImg: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&h=64&q=80&fit=crop' },
-  { id: '#180', title: 'Add oauth provider config', score: 'Critical Risk', status: 'Flagged', suggestions: 'Hardcoded credentials exposed. Review recommended.', userImg: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=64&h=64&q=80&fit=crop' },
-];
-
-const LIVE_SCAN_FEED = [
-  { step: 'Scanning repo: payments-api', time: 'Just now', icon: 'scan' },
-  { step: 'AI found insecure JWT validation in user.controller.ts', time: '1m ago', icon: 'warn' },
-  { step: 'Auto-fix PR #405 opened dynamically', time: '2m ago', icon: 'pr' },
-  { step: 'Webhook triggered & checks validated', time: '3m ago', icon: 'success' },
-  { step: 'GitHub code review completed automatically', time: '4m ago', icon: 'success' },
-];
-
-const TEAM_ACTIVITY = [
-  {
-    id: 1,
-    type: 'comment',
-    user: 'Moyosoluwalorun',
-    action: 'assigned task',
-    target: 'Fix SQL Injection in user-service',
-    inContext: 'to Nico Greenberg.',
-    time: 'Friday, 4:16PM',
-    meta: 'Critical Vulnerabilities',
-    quote: '...make sure to review the AI-suggested patch in PR #182. It fixes the nested SQL parameter bindings.'
-  },
-  {
-    id: 2,
-    type: 'comment',
-    user: 'Nico Greenberg',
-    action: 'commented on',
-    target: 'Stripe API Key Leak.',
-    inContext: '',
-    time: 'Tuesday, 2:31PM',
-    meta: 'Secrets Exposure',
-    quote: 'Key has been fully rotated on Stripe dashboard. I am preparing the dynamic env injection now.'
-  },
-  {
-    id: 3,
-    type: 'merge',
-    user: 'System',
-    action: '',
-    target: 'Auto-fix PR #405 was merged into payments-api',
-    inContext: '',
-    time: '',
-    meta: '',
-    quote: ''
-  },
-  {
-    id: 4,
-    type: 'add',
-    user: 'System',
-    action: '',
-    target: 'Hardcoded credentials check added to pre-commit hook.',
-    inContext: '',
-    time: '',
-    meta: '',
-    quote: ''
-  },
-];
-
-const REPO_FILTER_OPTIONS = ['All repositories', 'payments-api', 'auth-service', 'infra-core', 'gateway-router', 'billing-worker'];
-
 // Reusable widget header: [All repositories | repo ∨]  ————————————————  [View all]
-function WidgetHeader({ viewAllHref }: { viewAllHref?: string }) {
+function WidgetHeader({ viewAllHref, options = [] }: { viewAllHref?: string, options?: string[] }) {
   const [selected, setSelected] = React.useState('All repositories');
   const [open, setOpen] = React.useState(false);
+
+  const filterOptions = ['All repositories', ...options];
 
   return (
     <div className="px-4 py-2.5 border-b border-zinc-100 flex items-center justify-between rounded-t-[12px]">
@@ -233,7 +157,7 @@ function WidgetHeader({ viewAllHref }: { viewAllHref?: string }) {
         {/* Dropdown panel */}
         {open && (
           <div className="absolute top-[calc(100%+6px)] left-0 min-w-[190px] bg-white border border-zinc-200 rounded-[8px] shadow-lg z-50 py-1 overflow-hidden">
-            {REPO_FILTER_OPTIONS.map(opt => (
+            {filterOptions.map(opt => (
               <button
                 key={opt}
                 onClick={() => { setSelected(opt); setOpen(false); }}
@@ -267,11 +191,22 @@ function WidgetHeader({ viewAllHref }: { viewAllHref?: string }) {
 }
 
 export function OverviewView() {
+  const { overview, aiExecution, loadOverview, loadAIExecutionAnalytics } = useAnalytics();
+  const { vulnerabilities, summary: vulnsSummary, loadVulnerabilities } = useVulnerabilities();
+  const { repositories, loadRepositories } = useRepositories();
+
+  React.useEffect(() => {
+    loadOverview();
+    loadVulnerabilities();
+    loadRepositories();
+    loadAIExecutionAnalytics();
+  }, [loadOverview, loadVulnerabilities, loadRepositories, loadAIExecutionAnalytics]);
+
   const [isEmpty, setIsEmpty] = React.useState(false);
   const [repoFilter, setRepoFilter] = React.useState('All repositories');
   const [filterOpen, setFilterOpen] = React.useState(false);
 
-  const REPO_FILTERS = ['All repositories', 'payments-api', 'auth-service', 'infra-core', 'gateway-router', 'billing-worker'];
+  const repoNames = repositories.map(r => r.name);
 
   // Live Scan Pipeline Interactive State Machine
   const [progress, setProgress] = React.useState(68);
@@ -330,13 +265,7 @@ export function OverviewView() {
           <span>Home</span>
         </div>
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => setIsEmpty(!isEmpty)}
-            className="text-[11px] font-semibold text-zinc-600 border border-zinc-200 bg-white hover:bg-zinc-50 px-2.5 py-1 rounded-[4px] shadow-sm transition-all hover:text-zinc-900 active:scale-95 flex items-center gap-1.5 cursor-pointer"
-          >
-            <div className={`w-1.5 h-1.5 rounded-full ${isEmpty ? 'bg-amber-500 animate-pulse' : 'bg-zinc-300'}`} />
-            <span>{isEmpty ? 'View Live Data' : 'Simulate Empty States'}</span>
-          </button>
+
           <div className="flex items-center gap-1.5 cursor-pointer group active:scale-[0.98] transition-transform p-2 -mr-2 rounded-lg hover:bg-zinc-100/50">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)] group-hover:shadow-[0_0_12px_rgba(16,185,129,0.6)] transition-all" />
             <span className="text-[12px] text-zinc-500 group-hover:text-zinc-800 transition-colors tracking-tight">2 online</span>
@@ -352,12 +281,12 @@ export function OverviewView() {
           <p className="tracking-tight text-[15px] text-zinc-600">Welcome back, <span className="text-zinc-900 text-[24px] font-bold tracking-tighter hover:text-blue-600 cursor-pointer transition-colors">Moyosoluwalorun.</span></p>
 
           <h1 className="text-[32px] md:text-[40px] font-bold text-zinc-900 font-sans leading-tight tracking-tighter mt-1">
-            {isEmpty ? 'Your team has 0' : 'Your team has 12'} <br className="hidden md:block" />active vulnerabilities
+            {isEmpty ? 'Your team has 0' : `Your team has ${overview?.metrics?.totalVulnerabilities || 0}`} <br className="hidden md:block" />active vulnerabilities
           </h1>
           <p className="text-[14px] text-zinc-500 font-sans max-w-xl leading-relaxed tracking-tight mt-1">
             {isEmpty
               ? 'In the last 24 hours your team has introduced 0 vulnerabilities. All services are running with clean compliance indices.'
-              : 'In the last 24 hours your team has introduced vulnerabilities related to SQL Injection, Exposed Secrets, and Dependency Changes.'}
+              : `In the last 24 hours your team has introduced vulnerabilities related to SQL Injection, Exposed Secrets, and Dependency Changes.`}
           </p>
         </div>
 
@@ -393,12 +322,12 @@ export function OverviewView() {
           <div className="flex flex-col gap-1.5">
             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Security Posture Score</span>
             <div className="flex items-baseline gap-2">
-              <span className="text-[44px] font-extrabold text-zinc-950 tracking-tighter leading-none group-hover:text-black transition-colors">{isEmpty ? '100' : '82'}</span>
+              <span className="text-[44px] font-extrabold text-zinc-950 tracking-tighter leading-none group-hover:text-black transition-colors">{isEmpty ? '100' : overview?.metrics?.securityScore || '--'}</span>
               <span className="text-[13px] text-zinc-400 font-medium">/100</span>
               <span className={`text-[12px] font-bold bg-emerald-50 border border-emerald-100/50 rounded px-1.5 py-0.5 ml-2 font-mono ${isEmpty ? 'text-emerald-600' : 'text-emerald-700'}`}>{isEmpty ? 'A+' : 'B+'}</span>
             </div>
             <div className="flex items-center gap-2 mt-1 text-[12px] text-zinc-500">
-              <span className="font-semibold text-emerald-600">{isEmpty ? '↑ Stable' : '↑ +6 this week'}</span>
+              <span className="font-semibold text-emerald-600">{isEmpty ? '↑ Stable' : `↑ ${overview?.metrics?.scoreTrend?.value || '+6'} this week`}</span>
               <span className="text-zinc-300">•</span>
               <span className="font-medium text-emerald-700 bg-emerald-50/50 border border-emerald-100/50 px-2 py-0.5 rounded-full text-[11px]">{isEmpty ? 'Posture Verified' : 'Posture Improving'}</span>
             </div>
@@ -439,19 +368,19 @@ export function OverviewView() {
               <div className="p-4 bg-zinc-50/50 border-b border-zinc-100 grid grid-cols-4 gap-2 text-center">
                 <div className="flex flex-col">
                   <span className="text-[10px] text-zinc-400 uppercase font-semibold">Critical</span>
-                  <span className={`text-[16px] font-bold ${isEmpty ? 'text-zinc-400' : 'text-red-600'}`}>{isEmpty ? '0' : '3'}</span>
+                  <span className={`text-[16px] font-bold ${isEmpty ? 'text-zinc-400' : 'text-red-600'}`}>{isEmpty ? '0' : vulnsSummary?.bySeverity.critical || 0}</span>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-[10px] text-zinc-400 uppercase font-semibold">High</span>
-                  <span className={`text-[16px] font-bold ${isEmpty ? 'text-zinc-400' : 'text-orange-500'}`}>{isEmpty ? '0' : '4'}</span>
+                  <span className={`text-[16px] font-bold ${isEmpty ? 'text-zinc-400' : 'text-orange-500'}`}>{isEmpty ? '0' : vulnsSummary?.bySeverity.high || 0}</span>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-[10px] text-zinc-400 uppercase font-semibold">Medium</span>
-                  <span className={`text-[16px] font-bold ${isEmpty ? 'text-zinc-400' : 'text-yellow-600'}`}>{isEmpty ? '0' : '5'}</span>
+                  <span className={`text-[16px] font-bold ${isEmpty ? 'text-zinc-400' : 'text-yellow-600'}`}>{isEmpty ? '0' : vulnsSummary?.bySeverity.medium || 0}</span>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-[10px] text-zinc-400 uppercase font-semibold">Resolved</span>
-                  <span className={`text-[16px] font-bold ${isEmpty ? 'text-zinc-400 font-normal' : 'text-emerald-600'}`}>{isEmpty ? '--' : '12'}</span>
+                  <span className={`text-[16px] font-bold ${isEmpty ? 'text-zinc-400 font-normal' : 'text-emerald-600'}`}>{isEmpty ? '--' : vulnsSummary?.byStatus.DISMISSED || 0}</span>
                 </div>
               </div>
 
@@ -465,20 +394,20 @@ export function OverviewView() {
                 </div>
               ) : (
                 <div className="flex flex-col">
-                  {ACTIVE_VULNERABILITIES.map((vuln, i) => (
-                    <div key={i} className={`flex items-start gap-3 p-3.5 hover:bg-zinc-50 transition-colors cursor-pointer group/row active:scale-[0.99] ${i !== ACTIVE_VULNERABILITIES.length - 1 ? 'border-b border-zinc-100' : ''}`}>
+                  {(vulnerabilities || []).slice(0, 3).map((vuln: any, i: number) => (
+                    <div key={vuln.id || i} className={`flex items-start gap-3 p-3.5 hover:bg-zinc-50 transition-colors cursor-pointer group/row active:scale-[0.99] ${i !== 2 ? 'border-b border-zinc-100' : ''}`}>
                       <div className="mt-0.5">
                         <FaGithub className="w-[18px] h-[18px] text-zinc-900" />
                       </div>
                       <div className="flex flex-col gap-1 w-full">
                         <span className="text-[13px] font-semibold text-zinc-900 tracking-tight group-hover/row:text-blue-600 transition-colors">{vuln.title}</span>
                         <div className="flex items-center gap-1.5 text-[12px] text-zinc-500 tracking-tight">
-                          <div className="w-2.5 h-2.5 rounded-full bg-[#da3633]" />
-                          <span>Last run {vuln.lastRun}</span>
+                          <div className={`w-2.5 h-2.5 rounded-full ${vuln.severity === 'critical' ? 'bg-[#da3633]' : vuln.severity === 'high' ? 'bg-orange-500' : 'bg-yellow-500'}`} />
+                          <span>Reported {vuln.updatedAt || vuln.lastRun}</span>
                           <span className="text-zinc-300">&middot;</span>
                           <div className="flex items-center gap-1">
                             <FaChartPie className="w-3.5 h-3.5 text-zinc-400" />
-                            <span><span className="text-[#da3633] underline underline-offset-2">{vuln.assetsFailing}</span> / {vuln.totalAssets} assets failing</span>
+                            <span><span className="text-zinc-700 underline underline-offset-2">{vuln.source || 'Live Scan'}</span> / {vuln.file || 'Multiple assets'}</span>
                           </div>
                         </div>
                       </div>
@@ -490,9 +419,9 @@ export function OverviewView() {
 
             {/* 6. Secrets Exposure Widget */}
             <div className="border border-zinc-200 rounded-[12px] bg-white flex flex-col w-full shadow-sm hover:shadow-md transition-shadow group/card">
-              <WidgetHeader viewAllHref="/dashboard/vulnerabilities/secrets" />
+              <WidgetHeader viewAllHref="/dashboard/vulnerabilities/secrets" options={repoNames} />
 
-              {isEmpty ? (
+              {isEmpty || !(vulnerabilities?.filter(v => v.title.toLowerCase().includes('secret') || v.title.toLowerCase().includes('key') || v.title.toLowerCase().includes('token'))?.length) ? (
                 <div className="py-12 flex flex-col items-center justify-center text-center">
                   <div className="w-8 h-8 rounded-full border border-dashed border-zinc-200 flex items-center justify-center text-zinc-400 mb-2 bg-zinc-50/50">
                     <svg viewBox="0 0 24 24" className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" strokeLinecap="round" strokeLinejoin="round" /><path d="M7 11V7a5 5 0 0 1 10 0v4" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -502,13 +431,13 @@ export function OverviewView() {
                 </div>
               ) : (
                 <div className="flex flex-col">
-                  {SECRETS_EXPOSURE.map((secret, i) => (
-                    <div key={i} className={`flex items-center justify-between p-3.5 hover:bg-zinc-50 transition-colors cursor-pointer group/row active:scale-[0.99] ${i !== SECRETS_EXPOSURE.length - 1 ? 'border-b border-zinc-100' : ''}`}>
+                  {vulnerabilities.filter(v => v.title.toLowerCase().includes('secret') || v.title.toLowerCase().includes('key') || v.title.toLowerCase().includes('token')).slice(0, 3).map((secret, i, arr) => (
+                    <div key={i} className={`flex items-center justify-between p-3.5 hover:bg-zinc-50 transition-colors cursor-pointer group/row active:scale-[0.99] ${i !== arr.length - 1 ? 'border-b border-zinc-100' : ''}`}>
                       <div className="flex items-center gap-3">
                         <div className="relative w-8 h-8 rounded-[4px] border border-zinc-200/60 bg-zinc-50 flex items-center justify-center shrink-0">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={`https://cdn.jsdelivr.net/npm/simple-icons@12.0.0/icons/${secret.slug}.svg`}
+                            src={`https://cdn.jsdelivr.net/npm/simple-icons@12.0.0/icons/github.svg`}
                             alt=""
                             className="w-4.5 h-4.5 object-contain opacity-85 group-hover/row:opacity-100 transition-opacity"
                           />
@@ -516,8 +445,8 @@ export function OverviewView() {
                             }`} />
                         </div>
                         <div className="flex flex-col gap-0.5">
-                          <span className="text-[13px] font-medium text-zinc-900 tracking-tight group-hover/row:text-red-600 transition-colors">{secret.type}</span>
-                          <span className="text-[12px] text-zinc-400 font-mono tracking-tighter">{secret.location}</span>
+                          <span className="text-[13px] font-medium text-zinc-900 tracking-tight group-hover/row:text-red-600 transition-colors">{secret.title}</span>
+                          <span className="text-[12px] text-zinc-400 font-mono tracking-tighter">{secret.file}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-4 shrink-0">
@@ -544,9 +473,9 @@ export function OverviewView() {
 
             {/* Column 1: Recent PR Security Reviews */}
             <div className="flex flex-col border border-zinc-200 rounded-[12px] bg-white w-full shadow-sm hover:shadow-md transition-shadow group/card min-h-[580px]">
-              <WidgetHeader viewAllHref="/dashboard/prs" />
+              <WidgetHeader viewAllHref="/dashboard/prs" options={repoNames} />
 
-              {isEmpty ? (
+              {isEmpty || !(aiExecution?.recentFixes?.length) ? (
                 <div className="py-24 flex flex-col items-center justify-center text-center">
                   <div className="w-8 h-8 rounded-full border border-dashed border-zinc-250 flex items-center justify-center text-zinc-400 mb-2 bg-zinc-50/50">
                     <svg viewBox="0 0 24 24" className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="18" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><path d="M13 6h3a2 2 0 0 1 2 2v7" /><line x1="6" y1="9" x2="6" y2="21" /></svg>
@@ -556,22 +485,26 @@ export function OverviewView() {
                 </div>
               ) : (
                 <div className="flex flex-col divide-y divide-zinc-100">
-                  {PR_SECURITY_REVIEWS.map((pr, i) => (
-                    <div key={i} className="p-3.5 flex items-center justify-between hover:bg-zinc-50 transition-colors group/row cursor-pointer active:scale-[0.99]">
+                  {(aiExecution?.recentFixes || []).slice(0, 3).map((pr: any, i: number) => (
+                    <div key={pr.id || i} className="p-3.5 flex items-center justify-between hover:bg-zinc-50 transition-colors group/row cursor-pointer active:scale-[0.99]">
                       <div className="flex items-center gap-3">
                         <div className="w-5 h-5 rounded-full border border-black flex items-center justify-center text-black group-hover/row:bg-black group-hover/row:text-white transition-colors shadow-sm shrink-0">
                           <IconPR />
                         </div>
                         <div className="flex flex-col gap-0.5">
-                          <span className="text-[13px] font-medium text-zinc-900 tracking-tight group-hover/row:text-blue-600 transition-colors">PR {pr.id} — {pr.title}</span>
-                          <span className="text-[12px] text-zinc-500 tracking-tight group-hover/row:text-zinc-700 transition-colors">{pr.suggestions}</span>
+                          <span className="text-[13px] font-medium text-zinc-900 tracking-tight group-hover/row:text-blue-600 transition-colors">
+                            {pr.id && !pr.id.startsWith('#') ? `PR #${pr.id.slice(-4)}` : pr.id} — {pr.title}
+                          </span>
+                          <span className="text-[12px] text-zinc-500 tracking-tight group-hover/row:text-zinc-700 transition-colors">
+                            {pr.status === 'MERGED' ? 'Merged automatically. Risk mitigated.' : pr.suggestions || `Confidence: ${pr.confidence}%`}
+                          </span>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
-                        <span className={`text-[11px] px-2 py-0.5 rounded font-semibold tracking-tight ${pr.score === 'Low Risk' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-red-50 text-red-600 border border-red-100'
-                          }`}>{pr.score}</span>
+                        <span className={`text-[11px] px-2 py-0.5 rounded font-semibold tracking-tight ${pr.score === 'Low Risk' || pr.confidence > 90 ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-red-50 text-red-600 border border-red-100'
+                          }`}>{pr.score || (pr.confidence > 90 ? 'Low Risk' : 'High Risk')}</span>
                         <button className="flex items-center gap-1 text-[12px] font-medium text-zinc-900 border border-zinc-200 bg-white hover:bg-zinc-100 hover:border-zinc-300 px-3 py-1.5 rounded-full shadow-sm transition-all cursor-pointer tracking-tight active:scale-95">
-                          Fix <svg viewBox="0 0 24 24" className="w-3 h-3 text-zinc-400 group-hover/row:text-zinc-600 transition-colors" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 17L17 7M17 7H7M17 7V17" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                          {pr.status === 'MERGED' ? 'View' : 'Fix'} <svg viewBox="0 0 24 24" className="w-3 h-3 text-zinc-400 group-hover/row:text-zinc-600 transition-colors" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 17L17 7M17 7H7M17 7V17" strokeLinecap="round" strokeLinejoin="round" /></svg>
                         </button>
                       </div>
                     </div>
@@ -874,12 +807,12 @@ export function OverviewView() {
           </div>
 
           <div className="flex flex-col border border-zinc-200 rounded-[12px] bg-white w-full shadow-sm hover:shadow-md transition-shadow group/card">
-            <WidgetHeader viewAllHref="/dashboard/activity" />
+            <WidgetHeader viewAllHref="/dashboard/activity" options={repoNames} />
 
             <div className="p-6">
               <h4 className="text-[13px] font-bold text-zinc-900 tracking-tight mb-5">This Week</h4>
 
-              {isEmpty ? (
+              {isEmpty || !(overview?.securityEvents?.length) ? (
                 <div className="py-8 flex flex-col items-center justify-center text-center">
                   <div className="w-8 h-8 rounded-full border border-dashed border-zinc-200 flex items-center justify-center text-zinc-400 mb-2 bg-zinc-50/50">
                     <svg viewBox="0 0 24 24" className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
@@ -892,8 +825,8 @@ export function OverviewView() {
                   {/* Vertical connecting line */}
                   <div className="absolute left-[9px] top-2 bottom-6 w-px bg-zinc-200" />
 
-                  {TEAM_ACTIVITY.map((activity, i) => (
-                    <div key={i} className="flex gap-4 mb-6 relative group/event cursor-pointer">
+                  {(overview?.securityEvents || []).slice(0, 4).map((activity: any, i: number) => (
+                    <div key={activity.id || i} className="flex gap-4 mb-6 relative group/event cursor-pointer">
 
                       {/* Event Icon */}
                       <div className="relative z-10 shrink-0 bg-white py-1 transition-transform duration-300 group-hover/event:scale-110">
@@ -901,20 +834,20 @@ export function OverviewView() {
                           <div className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-sm">
                             <IconComment />
                           </div>
-                        ) : activity.type === 'note' ? (
+                        ) : activity.type === 'note' || activity.type === 'analysis' ? (
                           <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-sm">
                             <IconFile />
                           </div>
-                        ) : activity.type === 'merge' ? (
+                        ) : activity.type === 'merge' || activity.type === 'fix' ? (
                           <div className="w-5 h-5 rounded-full bg-zinc-500 text-white flex items-center justify-center shadow-sm">
                             <IconMerge />
                           </div>
-                        ) : activity.type === 'add' ? (
+                        ) : activity.type === 'add' || activity.type === 'policy' ? (
                           <div className="w-5 h-5 rounded-full bg-zinc-400 text-white flex items-center justify-center shadow-sm">
                             <IconAdd />
                           </div>
                         ) : (
-                          <div className="w-5 h-5 rounded-full bg-zinc-400 text-white flex items-center justify-center shadow-sm">
+                          <div className={`w-5 h-5 rounded-full ${activity.color || 'bg-zinc-400'} text-white flex items-center justify-center shadow-sm`}>
                             <IconRemove />
                           </div>
                         )}
@@ -924,12 +857,12 @@ export function OverviewView() {
                       <div className="flex flex-col pt-1 flex-1 group-hover/event:bg-zinc-50/50 -my-2 py-2 px-2 -ml-2 rounded-lg transition-colors">
                         <div className="flex items-baseline gap-1.5 flex-wrap">
                           {activity.user && <span className="text-[13px] font-semibold text-zinc-900 tracking-tight hover:underline hover:text-blue-600">{activity.user}</span>}
-                          <span className="text-[13px] text-zinc-500 tracking-tight">{activity.action}</span>
-                          <span className="text-[13px] text-zinc-900 tracking-tight hover:underline cursor-pointer">{activity.target}</span>
+                          <span className="text-[13px] text-zinc-500 tracking-tight">{activity.action || activity.type}</span>
+                          <span className="text-[13px] text-zinc-900 tracking-tight hover:underline cursor-pointer">{activity.target || activity.msg}</span>
                           {activity.inContext && <span className="text-[13px] text-zinc-500 tracking-tight">{activity.inContext}</span>}
                         </div>
 
-                        {activity.time && (
+                        {(activity.time || activity.time) && (
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-[12px] text-zinc-500 tracking-tight group-hover/event:text-zinc-700 transition-colors">{activity.time}</span>
                             {activity.meta && (
@@ -942,10 +875,10 @@ export function OverviewView() {
                         )}
 
                         {/* Quote / Content Box */}
-                        {activity.quote && (
+                        {(activity.quote || activity.detail) && (
                           <div className="mt-3 p-3 border border-zinc-200 rounded-lg bg-white shadow-sm flex items-start justify-between cursor-pointer hover:bg-zinc-50 hover:border-zinc-300 transition-all group/quote active:scale-[0.99]">
                             <p className="text-[13px] text-zinc-700 leading-relaxed tracking-tight max-w-[90%] group-hover/quote:text-zinc-900 transition-colors">
-                              {activity.quote}
+                              {activity.quote || activity.detail}
                             </p>
                             <button className="text-zinc-400 opacity-0 group-hover/event:opacity-100 hover:text-zinc-900 hover:bg-zinc-100 rounded-md transition-all p-1 active:scale-95">
                               <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2">

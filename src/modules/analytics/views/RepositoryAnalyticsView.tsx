@@ -54,14 +54,18 @@ function HeatmapCell({ value, max }: { value: number; max: number }) {
   );
 }
 
-// ── Scan frequency sparkline (SVG) ─────────────────────────────────────────
-const SCAN_DATA = [3, 5, 4, 6, 5, 7, 6, 8, 6, 7, 5, 8, 9, 7, 8];
-
-function ScanSparkline() {
+function ScanSparkline({ data }: { data: number[] }) {
+  if (!data || data.length === 0) {
+    return (
+      <div className="w-full h-[32px] flex items-center justify-center border border-dashed border-zinc-200 rounded text-[10px] text-zinc-400">
+        Waiting for API data
+      </div>
+    );
+  }
   const W = 120; const H = 32;
-  const max = Math.max(...SCAN_DATA);
-  const pts = SCAN_DATA.map((v, i) => ({
-    x: (i / (SCAN_DATA.length - 1)) * W,
+  const max = Math.max(...data);
+  const pts = data.map((v, i) => ({
+    x: (i / (data.length - 1)) * W,
     y: H - (v / max) * H * 0.9 - 2,
   }));
   const line = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
@@ -73,27 +77,20 @@ function ScanSparkline() {
   );
 }
 
-// ── Mock trend directions per repo ─────────────────────────────────────────
-const REPO_TRENDS: Record<string, 'up' | 'down' | 'stable'> = {
-  'payments-api': 'up',
-  'auth-service': 'up',
-  'infra-core': 'down',
-};
-
 export function RepositoryAnalyticsView() {
   const repos = useAppSelector((s) => s.repos.items);
   const [sortBy, setSortBy] = useState<'score' | 'critical' | 'name'>('critical');
 
   const sorted = [...repos].sort((a, b) => {
     if (sortBy === 'score') return a.score - b.score;
-    if (sortBy === 'critical') return b.critical - a.critical;
+    if (sortBy === 'critical') return (b.vulnerabilities?.critical || 0) - (a.vulnerabilities?.critical || 0);
     return a.name.localeCompare(b.name);
   });
 
-  const maxCritical = Math.max(...repos.map((r) => r.critical), 1);
-  const maxHigh = Math.max(...repos.map((r) => r.high), 1);
-  const maxMedium = Math.max(...repos.map((r) => r.medium), 1);
-  const maxLow = Math.max(...repos.map((r) => r.low), 1);
+  const maxCritical = Math.max(...repos.map((r) => r.vulnerabilities?.critical || 0), 1);
+  const maxHigh = Math.max(...repos.map((r) => r.vulnerabilities?.high || 0), 1);
+  const maxMedium = Math.max(...repos.map((r) => r.vulnerabilities?.medium || 0), 1);
+  const maxLow = Math.max(...repos.map((r) => r.vulnerabilities?.low || 0), 1);
 
   return (
     <div className="p-6 flex flex-col gap-5">
@@ -131,8 +128,8 @@ export function RepositoryAnalyticsView() {
           </div>
 
           {sorted.map((repo, i) => {
-            const trend = REPO_TRENDS[repo.slug] ?? 'stable';
-            const totalIssues = repo.critical + repo.high + repo.medium + repo.low;
+            const trend = 'stable'; // Pending API
+            const totalIssues = (repo.vulnerabilities?.critical || 0) + (repo.vulnerabilities?.high || 0) + (repo.vulnerabilities?.medium || 0) + (repo.vulnerabilities?.low || 0);
             return (
               <div
                 key={repo.slug}
@@ -159,10 +156,10 @@ export function RepositoryAnalyticsView() {
 
                 {/* Criticals */}
                 <div className="flex items-center">
-                  {repo.critical > 0 ? (
+                  {(repo.vulnerabilities?.critical || 0) > 0 ? (
                     <span className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-[6px]">
                       <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                      {repo.critical}
+                      {repo.vulnerabilities?.critical || 0}
                     </span>
                   ) : (
                     <span className="text-[12px] font-semibold text-emerald-600">None</span>
@@ -188,13 +185,13 @@ export function RepositoryAnalyticsView() {
 
           <div className="bg-white border border-zinc-100 rounded-[12px] p-5 flex-1">
             <span className="text-[10.5px] font-bold text-zinc-400 uppercase tracking-widest block mb-3">Scan Frequency (15d)</span>
-            <ScanSparkline />
+            <ScanSparkline data={[]} />
             <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-zinc-50">
               {[
-                { label: 'Scans / day', val: '6.8' },
-                { label: 'Success rate', val: '94%' },
-                { label: 'Avg duration', val: '2.4m' },
-                { label: 'Auto-fixed PRs', val: '14' },
+                { label: 'Scans / day', val: '--' },
+                { label: 'Success rate', val: '--' },
+                { label: 'Avg duration', val: '--' },
+                { label: 'Auto-fixed PRs', val: '--' },
               ].map(({ label, val }) => (
                 <div key={label} className="flex flex-col">
                   <span className="text-[16px] font-bold text-zinc-900 tracking-tight">{val}</span>
@@ -206,20 +203,10 @@ export function RepositoryAnalyticsView() {
 
           <div className="bg-white border border-zinc-100 rounded-[12px] p-5">
             <span className="text-[10.5px] font-bold text-zinc-400 uppercase tracking-widest block mb-3">AI Fix Adoption</span>
-            {[
-              { label: 'Patches generated', val: 22, pct: 100 },
-              { label: 'PRs auto-merged', val: 14, pct: 64 },
-              { label: 'Human-reviewed', val: 6, pct: 27 },
-              { label: 'Rejected', val: 2, pct: 9 },
-            ].map(({ label, val, pct }) => (
-              <div key={label} className="flex items-center gap-3 mb-2.5 last:mb-0">
-                <span className="text-[11.5px] text-zinc-500 w-32 shrink-0">{label}</span>
-                <div className="flex-1 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${pct}%` }} />
-                </div>
-                <span className="text-[11px] font-bold text-zinc-700 w-5 text-right">{val}</span>
-              </div>
-            ))}
+            <div className="py-6 flex flex-col items-center justify-center text-center">
+              <span className="text-[13px] font-medium text-zinc-500">No adoption data yet</span>
+              <span className="text-[11px] text-zinc-400 mt-1">Waiting for AI Execution API</span>
+            </div>
           </div>
         </div>
       </div>
@@ -258,7 +245,7 @@ export function RepositoryAnalyticsView() {
                   <span className="text-[12px] font-semibold text-zinc-500 capitalize">{sev}</span>
                 </div>
                 {repos.map((r) => (
-                  <HeatmapCell key={r.slug} value={r[key]} max={maxVal} />
+                  <HeatmapCell key={r.slug} value={r.vulnerabilities?.[key] || 0} max={maxVal} />
                 ))}
               </div>
             );

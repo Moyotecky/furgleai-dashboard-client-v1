@@ -1,8 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { useAppDispatch, useAppSelector } from '@/shared/store/hooks';
+import {
+  nextStep,
+  prevStep,
+  updateFormData,
+  resetOnboarding,
+  submitOnboardingProfile,
+} from '@/shared/store/onboardingSlice';
+import { useToast } from '@/shared/lib/toastContext';
 
 // Mock list of countries
 const COUNTRIES = [
@@ -36,77 +45,57 @@ const USE_CASES = [
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const dispatch = useAppDispatch();
+  const { toast } = useToast();
 
-  // Form Fields State
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: 'developer@furgle.ai',
-    orgName: '',
-    orgHandle: '',
-    country: 'United States',
-    primaryIDE: 'vscode',
-    useCase: 'ci_cd',
-    teamSize: 'Just me',
-    subscribeUpdates: false,
-    profilePic: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&h=256&q=80',
-  });
+  // Pull everything from Redux
+  const { currentStep, formData, isSubmitting } = useAppSelector((s) => s.onboarding);
+  const authUser = useAppSelector((s) => s.auth.user);
 
-  // State to track active focused elements for the right side zoom animation
-  const [zoomTarget, setZoomTarget] = useState<'profile' | 'workspace' | 'pipeline' | 'team' | 'none'>('profile');
-
-  // Automatically update zoom targets as step changes
+  // Seed email from logged-in user on mount
   useEffect(() => {
-    if (currentStep === 1) {
-      setZoomTarget('profile');
-    } else if (currentStep === 2) {
-      setZoomTarget('workspace');
-    } else if (currentStep === 3) {
-      setZoomTarget('team');
-    } else if (currentStep === 4) {
-      setZoomTarget('pipeline');
-    } else {
-      setZoomTarget('none');
+    if (authUser?.email && !formData.email) {
+      dispatch(updateFormData({ email: authUser.email }));
     }
-  }, [currentStep]);
+    if (authUser?.firstName && !formData.firstName) {
+      dispatch(updateFormData({ firstName: authUser.firstName, lastName: authUser.lastName || '' }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authUser]);
+
+  // Derive zoom target from step (no extra state needed)
+  const zoomTarget: 'profile' | 'workspace' | 'pipeline' | 'team' | 'none' =
+    currentStep === 1 ? 'profile'
+    : currentStep === 2 ? 'workspace'
+    : currentStep === 3 ? 'team'
+    : currentStep === 4 ? 'pipeline'
+    : 'none';
 
   const handleInputChange = (field: string, val: any) => {
-    setFormData((prev) => {
-      const updated = { ...prev, [field]: val };
-      // Generate workspace slug automatically
-      if (field === 'orgName') {
-        updated.orgHandle = val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-      }
-      return updated;
-    });
+    dispatch(updateFormData({ [field]: val }));
   };
 
   const handleNext = () => {
     if (currentStep < 5) {
-      setCurrentStep((prev) => prev + 1);
+      dispatch(nextStep());
     } else {
       handleComplete();
     }
   };
 
   const handleBack = () => {
-    if (currentStep > 1) {
-      setCurrentStep((prev) => prev - 1);
-    }
+    dispatch(prevStep());
   };
 
   const handleComplete = async () => {
-    setIsSubmitting(true);
-    try {
-      // Simulate backend onboarding/profile complete lag
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      router.push('/'); // Navigate to dashboard home
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsSubmitting(false);
+    const result = await dispatch(submitOnboardingProfile(formData));
+    if (submitOnboardingProfile.fulfilled.match(result)) {
+      toast({ type: 'success', title: 'Welcome to FurgleAI!', message: 'Your workspace has been set up successfully.' });
+      dispatch(resetOnboarding());
+      router.push('/dashboard');
+    } else {
+      const errMsg = (result.payload as string) || 'Something went wrong. Please try again.';
+      toast({ type: 'error', title: 'Setup failed', message: errMsg });
     }
   };
 

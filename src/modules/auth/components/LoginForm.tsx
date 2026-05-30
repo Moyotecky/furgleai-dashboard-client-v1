@@ -1,25 +1,26 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAppDispatch } from '@/shared/store/hooks';
-import { loginStart, loginSuccess, loginFailure } from '@/shared/store/authSlice';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/shared/hooks/useAuth';
+import { getFieldError } from '@/shared/lib/errorParser';
+import { useToast } from '@/shared/lib/toastContext';
 import { motion } from 'framer-motion';
 import SocialButton from './SocialButton';
 import InputField from './InputField';
 import { loginSchema } from '../utils/validation';
 
 export default function LoginForm() {
-  const dispatch = useAppDispatch();
   const router = useRouter();
-
+  const { login, isActionLoading: isSubmitting } = useAuth();
+  const { toast } = useToast();
+  
   // Form State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   
   // UI States
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Logo SVG
   const Logo = () => (
@@ -83,26 +84,17 @@ export default function LoginForm() {
     e.preventDefault();
     if (!validateForm()) return;
 
-    setIsSubmitting(true);
-    dispatch(loginStart());
-
     try {
-      // Simulate backend delay
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-
-      const fakeUser = {
-        id: 'usr_furgle_' + Math.random().toString(36).substr(2, 9),
-        email,
-        name: email.split('@')[0],
-        role: 'developer',
-      };
-      
-      dispatch(loginSuccess({ user: fakeUser, token: 'fake_jwt_token_furgle' }));
-      router.push('/');
+      await login(email, password, false);
+      router.push('/dashboard');
     } catch (err) {
-      dispatch(loginFailure('Invalid email or password.'));
-    } finally {
-      setIsSubmitting(false);
+      const emailError = getFieldError(err, 'email');
+      const passwordError = getFieldError(err, 'password');
+      if (emailError || passwordError) {
+        setErrors({ email: emailError, password: passwordError });
+      } else {
+        toast({ type: 'error', title: 'Sign In Failed', message: 'Please check your credentials and try again.' });
+      }
     }
   };
 

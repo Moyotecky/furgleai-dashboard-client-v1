@@ -1,123 +1,278 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+
 import { useRouter, useSearchParams } from 'next/navigation';
+
 import { motion } from 'framer-motion';
+
 import { verifyEmailSchema } from '../utils/validation';
 
+import { authApi } from '@/shared/services/authApi';
+
+import { tokenManager } from '@/shared/lib/tokenManager';
+
+import { parseApiError } from '@/shared/lib/errorParser';
+
+import { useToast } from '@/shared/lib/toastContext';
+
 export default function VerifyEmailForm() {
+
   const router = useRouter();
+
   const searchParams = useSearchParams();
+
+  const { toast } = useToast();
+
   const isRecovery = searchParams.get('recovery') === 'true';
 
   // 6 digits code entry state
+
   const [code, setCode] = useState<string[]>(Array(6).fill(''));
-  
+
   // UI States
+
   const [error, setError] = useState<string | undefined>(undefined);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // References to input nodes for automatic focus shifting
+
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    // Focus first input field on render
+
     if (inputsRef.current[0]) {
+
       inputsRef.current[0].focus();
+
     }
+
   }, []);
 
   const handleChange = (index: number, value: string) => {
-    // Only accept numeric digits
+
     if (value && !/^\d$/.test(value)) return;
 
     const newCode = [...code];
+
     newCode[index] = value;
+
     setCode(newCode);
+
     setError(undefined);
 
-    // Auto advance focus to the next input box if typed
-    if (value && index < 5 && inputsRef.current[index + 1]) {
+    if (value && index < 5) {
+
       inputsRef.current[index + 1]?.focus();
+
     }
+
   };
 
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Shift focus backwards on backspace if field is already empty
-    if (e.key === 'Backspace' && !code[index] && index > 0 && inputsRef.current[index - 1]) {
+  const handleKeyDown = (
+
+    index: number,
+
+    e: React.KeyboardEvent<HTMLInputElement>
+
+  ) => {
+
+    if (e.key === 'Backspace' && !code[index] && index > 0) {
+
       inputsRef.current[index - 1]?.focus();
+
     }
+
   };
 
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+
     e.preventDefault();
+
     const pastedData = e.clipboardData.getData('text').slice(0, 6);
+
     if (!/^\d+$/.test(pastedData)) return;
 
     const newCode = Array(6).fill('');
+
     for (let i = 0; i < pastedData.length; i++) {
+
       newCode[i] = pastedData[i];
+
     }
+
     setCode(newCode);
 
-    // Focus last or empty field
     const focusIndex = Math.min(pastedData.length, 5);
+
     inputsRef.current[focusIndex]?.focus();
+
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
+
     e.preventDefault();
+
     setError(undefined);
 
     const fullCodeStr = code.join('');
-    const result = verifyEmailSchema.safeParse({ code: fullCodeStr });
+
+    const result = verifyEmailSchema.safeParse({
+
+      code: fullCodeStr,
+
+    });
+
     if (!result.success) {
+
       setError(result.error.issues[0].message);
+
       return;
+
     }
 
     setIsSubmitting(true);
 
     try {
-      // Simulate verification delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      
-      // If recovery verification, send back to login or onboarding
-      if (isRecovery) {
-        router.push('/auth/login?recovered=true');
-      } else {
-        router.push('/auth/success');
+
+      const email = tokenManager.getPendingEmail();
+
+      if (!email && !isRecovery) {
+
+        setError('No pending registration found. Please sign up again.');
+
+        setIsSubmitting(false);
+
+        return;
+
       }
+
+      await authApi.verifyEmail(
+
+        email || 'recovery@temp.com',
+
+        fullCodeStr
+
+      );
+
+      tokenManager.clearPendingEmail();
+
+      if (isRecovery) {
+
+        toast({
+
+          type: 'success',
+
+          title: 'Verified',
+
+          message: 'Recovery successful.',
+
+        });
+
+        router.push('/auth/login?recovered=true');
+
+      } else {
+
+        toast({
+
+          type: 'success',
+
+          title: 'Email Verified',
+
+          message: 'Welcome to FurgleAI.',
+
+        });
+
+        router.push('/auth/success');
+
+      }
+
     } catch (err) {
-      setError('Invalid verification code. Please request a new one.');
+
+      const parsed = parseApiError(err);
+
+      setError(
+
+        parsed.message ||
+
+        'Invalid verification code. Please request a new one.'
+
+      );
+
     } finally {
+
       setIsSubmitting(false);
+
     }
+
   };
 
-  // Logo SVG
+  const handleResend = async () => {
+
+    const email = tokenManager.getPendingEmail();
+
+    if (!email) {
+
+      toast({
+
+        type: 'error',
+
+        title: 'Missing Email',
+
+        message: 'Could not identify your email.',
+
+      });
+
+      return;
+
+    }
+
+    try {
+
+      await authApi.resendVerification(email);
+
+      toast({
+
+        type: 'info',
+
+        title: 'Code Sent',
+
+        message: 'A new verification code has been sent.',
+
+      });
+
+    } catch (err) {
+
+      const parsed = parseApiError(err);
+
+      toast({
+
+        type: 'error',
+
+        title: 'Resend Failed',
+
+        message: parsed.message,
+
+      });
+
+    }
+
+  };
+
   const Logo = () => (
+
     <div className="w-11 h-11 bg-zinc-950 rounded-2xl flex items-center justify-center shadow-md select-none">
-      <svg viewBox="0 0 24 24" className="w-6 h-6 text-white" fill="none" stroke="currentColor">
-        <path
-          d="M6 17 L12 11 L18 17"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M6 11 L12 5 L18 11"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
+
+      {/* SVG */}
+
     </div>
+
   );
 
   return (
     <div className="w-full max-w-[420px] flex flex-col justify-center px-4 py-8 md:py-12 bg-white text-zinc-950 font-sans min-h-screen">
-      
+
       {/* Brand Logo Wrapper */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -149,7 +304,7 @@ export default function VerifyEmailForm() {
       </div>
 
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6 mt-4 text-left">
-        
+
         {/* Verification Inputs Grid */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
@@ -167,9 +322,8 @@ export default function VerifyEmailForm() {
               onChange={(e) => handleChange(index, e.target.value)}
               onKeyDown={(e) => handleKeyDown(index, e)}
               onPaste={handlePaste}
-              className={`w-10 h-11 md:w-12 md:h-13 text-center text-lg md:text-xl font-bold font-secondary text-zinc-950 bg-white border ${
-                error ? 'border-red-500 focus:ring-red-500/20' : 'border-zinc-200 focus:border-zinc-950 focus:ring-zinc-950/20'
-              } rounded-2xl outline-none focus:ring-2 transition-all duration-150 select-all`}
+              className={`w-10 h-11 md:w-12 md:h-13 text-center text-lg md:text-xl font-bold font-secondary text-zinc-950 bg-white border ${error ? 'border-red-500 focus:ring-red-500/20' : 'border-zinc-200 focus:border-zinc-950 focus:ring-zinc-950/20'
+                } rounded-2xl outline-none focus:ring-2 transition-all duration-150 select-all`}
             />
           ))}
         </motion.div>
@@ -195,7 +349,7 @@ export default function VerifyEmailForm() {
           <button
             type="button"
             className="font-bold text-zinc-950 hover:underline focus:outline-none cursor-pointer"
-            onClick={() => console.log('Resending verification code')}
+            onClick={handleResend}
           >
             Resend Code
           </button>

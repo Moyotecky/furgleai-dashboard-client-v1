@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAppSelector } from '@/shared/store/hooks';
+import { useAnalytics } from '@/shared/hooks/useAnalytics';
 
 // ── Risk Trend Line Chart (SVG) ────────────────────────────────────────────
 const TREND_DATA = {
@@ -78,51 +79,9 @@ function DensityBlocks({ total, filled, color }: { total: number; filled: number
   );
 }
 
-// ── AI Risk Exposure sources ───────────────────────────────────────────────
-const AI_RISK_ITEMS = [
-  { label: 'SQL Injection via AI completion', severity: 'critical', aiPct: 78, repo: 'payments-api' },
-  { label: 'Unsafe deserialization pattern', severity: 'high', aiPct: 64, repo: 'auth-service' },
-  { label: 'Hardcoded credential in AI block', severity: 'critical', aiPct: 91, repo: 'infra-core' },
-  { label: 'Race condition in async handler', severity: 'high', aiPct: 55, repo: 'payments-api' },
-  { label: 'Path traversal in file service', severity: 'medium', aiPct: 42, repo: 'auth-service' },
-];
 
-const SEVERITY_COLOR: Record<string, string> = {
-  critical: 'bg-red-500',
-  high: 'bg-orange-500',
-  medium: 'bg-amber-400',
-  low: 'bg-zinc-300',
-};
-const SEVERITY_TEXT: Record<string, string> = {
-  critical: 'text-red-600 bg-red-50',
-  high: 'text-orange-600 bg-orange-50',
-  medium: 'text-amber-700 bg-amber-50',
-  low: 'text-zinc-600 bg-zinc-100',
-};
 
-// ── Security Event Feed ────────────────────────────────────────────────────
-const SECURITY_EVENTS = [
-  { type: 'scan', msg: 'Deep scan completed — payments-api', detail: '3 new findings', time: '3m ago', color: 'bg-indigo-100 text-indigo-600' },
-  { type: 'fix', msg: 'AI auto-fix merged — auth-service', detail: 'CSRF token patch applied', time: '41m ago', color: 'bg-emerald-100 text-emerald-600' },
-  { type: 'critical', msg: 'Critical secret detected — infra-core', detail: 'AWS key in .env.example', time: '2h ago', color: 'bg-red-100 text-red-600' },
-  { type: 'pr', msg: 'PR blocked by policy — payments-api', detail: 'Unsafe SQL query detected', time: '5h ago', color: 'bg-orange-100 text-orange-600' },
-  { type: 'scan', msg: 'Scheduled scan completed — auth-service', detail: 'No new issues found', time: '1d ago', color: 'bg-zinc-100 text-zinc-600' },
-];
-
-// ── Vuln Category Cards (like reference image control categories) ──────────
-const VULN_CATEGORIES = [
-  { label: 'Injection Attacks', icon: '💉', total: 24, critical: 3, high: 7, medium: 8, low: 6, passPct: 37 },
-  { label: 'Auth & Access Control', icon: '🔐', total: 18, critical: 1, high: 3, medium: 6, low: 8, passPct: 72 },
-  { label: 'Secrets Exposure', icon: '🗝️', total: 12, critical: 4, high: 5, medium: 2, low: 1, passPct: 8 },
-  { label: 'Dependency Risks', icon: '📦', total: 30, critical: 0, high: 4, medium: 14, low: 12, passPct: 53 },
-  { label: 'AI-Generated Code', icon: '🤖', total: 20, critical: 2, high: 6, medium: 7, low: 5, passPct: 25 },
-  { label: 'Infrastructure Config', icon: '⚙️', total: 16, critical: 1, high: 2, medium: 5, low: 8, passPct: 81 },
-  { label: 'API Security', icon: '🌐', total: 22, critical: 0, high: 5, medium: 9, low: 8, passPct: 63 },
-  { label: 'Data Protection', icon: '🛡️', total: 14, critical: 0, high: 2, medium: 6, low: 6, passPct: 78 },
-  { label: 'Cryptography', icon: '🔒', total: 10, critical: 0, high: 1, medium: 3, low: 6, passPct: 90 },
-];
-
-function VulnCategoryCard({ item }: { item: typeof VULN_CATEGORIES[0] }) {
+function VulnCategoryCard({ item }: { item: any }) {
   const blocks = 18;
   const critBlocks = Math.round((item.critical / item.total) * blocks);
   const highBlocks = Math.round((item.high / item.total) * blocks);
@@ -202,19 +161,23 @@ function ScoreDonut({ score }: { score: number }) {
 
 // ── Main View ──────────────────────────────────────────────────────────────
 export function OverviewAnalyticsView() {
+  const { overview, loadOverview } = useAnalytics();
   const repos = useAppSelector((s) => s.repos.items);
   const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('30d');
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    loadOverview();
+  }, [loadOverview]);
 
-  const avgScore = repos.length > 0 ? Math.round(repos.reduce((s, r) => s + r.score, 0) / repos.length) : 82;
-  const totalCritical = repos.reduce((s, r) => s + r.critical, 0);
-  const totalHigh = repos.reduce((s, r) => s + r.high, 0);
-  const totalMedium = repos.reduce((s, r) => s + r.medium, 0);
-  const totalLow = repos.reduce((s, r) => s + r.low, 0);
-  const totalFindings = totalCritical + totalHigh + totalMedium + totalLow;
-  const aiRiskPct = 62; // Mocked AI-introduced risk percentage
+  const avgScore = overview?.metrics?.securityScore || (repos.length > 0 ? Math.round(repos.reduce((s, r) => s + r.score, 0) / repos.length) : 82);
+  const totalCritical = overview?.metrics?.openCritical || repos.reduce((s, r) => s + (r.vulnerabilities?.critical || 0), 0);
+  const totalHigh = overview?.metrics?.openHigh || repos.reduce((s, r) => s + (r.vulnerabilities?.high || 0), 0);
+  const totalMedium = overview?.metrics?.openMedium || repos.reduce((s, r) => s + (r.vulnerabilities?.medium || 0), 0);
+  const totalLow = overview?.metrics?.openLow || repos.reduce((s, r) => s + (r.vulnerabilities?.low || 0), 0);
+  const totalFindings = overview?.metrics?.totalVulnerabilities || (totalCritical + totalHigh + totalMedium + totalLow);
+  const aiRiskPct = overview?.metrics?.aiIntroducedRiskPct || 0;
 
   if (!mounted) return null;
 
@@ -281,7 +244,7 @@ export function OverviewAnalyticsView() {
               <svg viewBox="0 0 24 24" className="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M18 15l-6-6-6 6" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              <span className="text-[11px] text-emerald-600 font-semibold">+3.2 pts vs last period</span>
+              <span className="text-[11px] text-emerald-600 font-semibold">{overview?.metrics?.scoreTrend?.value ? `${overview.metrics.scoreTrend.value > 0 ? '+' : ''}${overview.metrics.scoreTrend.value}` : '+3.2'} pts vs last period</span>
             </div>
           </div>
         </div>
@@ -340,9 +303,14 @@ export function OverviewAnalyticsView() {
           </div>
         </div>
         <div className="grid grid-cols-3 gap-3">
-          {VULN_CATEGORIES.map((cat) => (
+          {overview?.vulnerabilityCategories ? overview.vulnerabilityCategories.map((cat) => (
             <VulnCategoryCard key={cat.label} item={cat} />
-          ))}
+          )) : (
+            <div className="col-span-3 py-12 flex flex-col items-center justify-center text-center">
+              <span className="text-[13px] font-medium text-zinc-500">No vulnerability categories mapped yet</span>
+              <span className="text-[11px] text-zinc-400 mt-1">Pending API aggregation response</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -366,10 +334,15 @@ export function OverviewAnalyticsView() {
               <span className="text-[10.5px] font-bold text-zinc-400 uppercase tracking-widest">AI Confidence</span>
               <span className="text-[10.5px] font-bold text-zinc-400 uppercase tracking-widest">Repository</span>
             </div>
-            {AI_RISK_ITEMS.map((item, i) => (
+            {overview?.aiRiskSources?.length ? overview.aiRiskSources.map((item, i) => (
               <div key={i} className="grid grid-cols-[1fr_80px_90px_100px] gap-3 px-5 py-3 border-b border-zinc-50 last:border-0 hover:bg-zinc-50/80 transition-colors cursor-pointer">
                 <span className="text-[12.5px] font-medium text-zinc-700 tracking-tight truncate">{item.label}</span>
-                <span className={`inline-flex items-center self-center text-[10.5px] font-semibold px-2 py-0.5 rounded-[5px] ${SEVERITY_TEXT[item.severity]}`}>
+                <span className={`inline-flex items-center self-center text-[10.5px] font-semibold px-2 py-0.5 rounded-[5px] ${
+                  item.severity === 'critical' ? 'text-red-600 bg-red-50' :
+                  item.severity === 'high' ? 'text-orange-600 bg-orange-50' :
+                  item.severity === 'medium' ? 'text-amber-700 bg-amber-50' :
+                  'text-zinc-600 bg-zinc-100'
+                }`}>
                   {item.severity}
                 </span>
                 <div className="flex items-center gap-2 self-center">
@@ -383,7 +356,11 @@ export function OverviewAnalyticsView() {
                 </div>
                 <span className="text-[11.5px] font-mono text-zinc-500 self-center">{item.repo}</span>
               </div>
-            ))}
+            )) : (
+              <div className="py-12 flex flex-col items-center justify-center text-center">
+                <span className="text-[13px] font-medium text-zinc-500">No AI-introduced risks</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -396,9 +373,9 @@ export function OverviewAnalyticsView() {
             </span>
           </div>
           <div className="flex flex-col">
-            {SECURITY_EVENTS.map((ev, i) => (
-              <div key={i} className="flex items-start gap-3 px-5 py-3.5 border-b border-zinc-50 last:border-0 hover:bg-zinc-50/80 transition-colors">
-                <div className={`w-6 h-6 rounded-full ${ev.color} flex items-center justify-center shrink-0 mt-0.5`}>
+            {overview?.securityEvents?.length ? overview.securityEvents.map((ev, i) => (
+              <div key={ev.id || i} className="flex items-start gap-3 px-5 py-3.5 border-b border-zinc-50 last:border-0 hover:bg-zinc-50/80 transition-colors">
+                <div className={`w-6 h-6 rounded-full ${ev.color || 'bg-zinc-100 text-zinc-600'} flex items-center justify-center shrink-0 mt-0.5`}>
                   {ev.type === 'scan' && (
                     <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="11" cy="11" r="7.5"/><line x1="20.5" y1="20.5" x2="16" y2="16" strokeLinecap="round"/></svg>
                   )}
@@ -418,7 +395,11 @@ export function OverviewAnalyticsView() {
                 </div>
                 <span className="text-[10.5px] text-zinc-400 shrink-0 mt-0.5">{ev.time}</span>
               </div>
-            ))}
+            )) : (
+              <div className="py-12 flex flex-col items-center justify-center text-center">
+                <span className="text-[13px] font-medium text-zinc-500">No security events found</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

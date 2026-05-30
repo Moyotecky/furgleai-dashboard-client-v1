@@ -1,11 +1,16 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './authSlice';
 import repoReducer from './repoSlice';
-
+import vulnerabilityReducer from './vulnerabilitySlice';
+import analyticsReducer from './analyticsSlice';
+import onboardingReducer from './onboardingSlice';
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     repos: repoReducer,
+    vulnerabilities: vulnerabilityReducer,
+    analytics: analyticsReducer,
+    onboarding: onboardingReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
